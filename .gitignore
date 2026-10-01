@@ -62,6 +62,9 @@ lightning_logs/
 
 # Unreviewed logs and local scratch files
 *.log
+typescript
+typescript.*
+*.typescript
 slurm-*.out
 tmp/
 temp/

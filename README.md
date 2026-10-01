@@ -6,7 +6,9 @@ The learning scope covers **GPU compute, containers, PyTorch/NeMo training, clou
 
 ## Current status
 
-**Initial documentation scaffold.** Hands-on labs have not started. No training runs, deployments, benchmarks, or completed labs are claimed.
+**Lab 01, Part 1 complete:** [Brev GPU Node Validation](docs/labs/01-brev-gpu-node-validation.md) documents cloud connectivity, Linux host identification, PCIe GPU visibility, and NVIDIA driver communication on an L4 node.
+
+CUDA userspace/Toolkit, Docker, NVIDIA Container Toolkit, PyTorch, and NeMo validation remain pending. No training runs, deployments, benchmarks, or complete end-to-end lab are claimed.
 
 Follow the planned milestones in [ROADMAP.md](ROADMAP.md) and the evidence-backed activity log in [PROGRESS.md](PROGRESS.md).
 
@@ -39,9 +41,9 @@ ai-infrastructure-guide/
 
 Empty directories contain `.gitkeep` placeholders so Git preserves the scaffold.
 
-## Starting point
+## Continue the guide
 
-The first planned lab is to inspect a cloud compute environment and record its accelerator hardware, driver and runtime versions, available memory, and resource usage. Use the tooling appropriate to the environment, such as `nvidia-smi` for an NVIDIA GPU. Provisioning details, commands, and observations will be recorded after the lab is performed.
+Start with [Lab 01: GPU Node Validation](docs/labs/01-brev-gpu-node-validation.md) for the environment inventory, connectivity recovery, validation workflow, and lessons learned. The next step is to validate CUDA userspace and the Toolkit, distinguishing installed components from the driver's reported CUDA compatibility level.
 
 ## Documentation standard
 
