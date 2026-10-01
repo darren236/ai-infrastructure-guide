@@ -16,7 +16,11 @@ This entry records repository setup only. No cloud GPU provisioning or infrastru
 
 ## 2026-10-01 — Broader AI infrastructure scope
 
-Adopted the name **AI Infrastructure Lab** and broadened the portfolio framing to compute, orchestration, distributed systems, and operations. Updated the README and roadmap to describe general infrastructure concepts alongside tool-specific labs. Hands-on work remains planned.
+Broadened the portfolio framing to compute, orchestration, distributed systems, and operations. Updated the README and roadmap to describe general infrastructure concepts alongside tool-specific labs. Hands-on work remains planned.
+
+## 2026-10-01 — Guide naming
+
+Adopted the name **AI Infrastructure Guide** and updated the repository title, description, and README. The guide retains directories for practical labs and evidence as hands-on work is completed.
 
 ## Updating this log
 

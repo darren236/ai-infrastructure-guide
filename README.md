@@ -1,6 +1,6 @@
-# AI Infrastructure Lab
+# AI Infrastructure Guide
 
-A hands-on AI infrastructure learning journey and technical portfolio covering compute, workload orchestration, distributed systems, and reliable operations. This repository will document reproducible labs, architecture decisions, operational lessons, and measured results as the work is completed.
+A hands-on guide to AI infrastructure and a technical portfolio covering compute, workload orchestration, distributed systems, and reliable operations. This repository will document reproducible labs, architecture decisions, operational lessons, and measured results as the work is completed.
 
 The learning scope covers **GPU compute, containers, PyTorch/NeMo training, cloud infrastructure, Slurm, distributed communication, Kubernetes, observability, networking, storage, and troubleshooting**. Tool-specific labs will explore technologies such as CUDA, NCCL, and NVIDIA GPU Operator within that broader scope. The aim is to build practical experience designing and operating AI infrastructure and explain the tradeoffs clearly.
 
@@ -21,7 +21,7 @@ Follow the planned milestones in [ROADMAP.md](ROADMAP.md) and the evidence-backe
 ## Repository layout
 
 ```text
-ai-infrastructure-lab/
+ai-infrastructure-guide/
 ├── README.md
 ├── ROADMAP.md
 ├── PROGRESS.md
@@ -56,4 +56,4 @@ Each completed lab should record:
 
 Separate planned work from observed outcomes. Publish only reviewed, sanitized evidence; keep credentials, private data, datasets, checkpoints, and large generated artifacts out of Git.
 
-This is an independent learning portfolio.
+This is an independent learning guide and portfolio.
