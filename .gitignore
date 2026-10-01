@@ -1,0 +1,71 @@
+# Local credentials and configuration
+.env
+.env.*
+!.env.example
+!.env.*.example
+.aws/
+.azure/
+.config/gcloud/
+.ssh/
+.kube/
+*.pem
+*.key
+*credentials*.json
+*service-account*.json
+
+# Local operating system and editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Python environments, caches, and build artifacts
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+build/
+dist/
+
+# Native and CUDA build artifacts
+*.o
+*.obj
+*.so
+*.a
+*.cubin
+*.fatbin
+CMakeFiles/
+CMakeCache.txt
+
+# Datasets, model weights, and generated workload output
+data/
+datasets/
+checkpoints/
+models/
+outputs/
+runs/
+wandb/
+lightning_logs/
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.nemo
+*.onnx
+
+# Unreviewed logs and local scratch files
+*.log
+slurm-*.out
+tmp/
+temp/
+.cache/
+
+# Reviewed benchmark reports and sanitized evidence may be committed
+# under benchmarks/ or docs/ using deliberate filenames and formats.
