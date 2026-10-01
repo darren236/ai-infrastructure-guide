@@ -12,7 +12,11 @@ Prepared the portfolio README, planned learning roadmap, progress log, Git ignor
 
 This entry records repository setup only. No cloud GPU provisioning or infrastructure experiments have been performed or validated as part of this setup.
 
-**Next planned step:** Identify a suitable cloud GPU, capture sanitized `nvidia-smi` output, and document the first environment inspection in `docs/labs/`.
+**Next planned step:** Identify a suitable cloud compute environment, capture sanitized hardware and runtime inspection output, and document the first environment inspection in `docs/labs/`.
+
+## 2026-10-01 — Broader AI infrastructure scope
+
+Adopted the name **AI Infrastructure Lab** and broadened the portfolio framing to compute, orchestration, distributed systems, and operations. Updated the README and roadmap to describe general infrastructure concepts alongside tool-specific labs. Hands-on work remains planned.
 
 ## Updating this log
 

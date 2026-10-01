@@ -1,8 +1,8 @@
-# NVIDIA Solutions Architect Lab
+# AI Infrastructure Lab
 
-A hands-on NVIDIA AI infrastructure learning journey and technical portfolio. This repository will document reproducible labs, architecture decisions, operational lessons, and measured results as the work is completed.
+A hands-on AI infrastructure learning journey and technical portfolio covering compute, workload orchestration, distributed systems, and reliable operations. This repository will document reproducible labs, architecture decisions, operational lessons, and measured results as the work is completed.
 
-The learning scope covers **CUDA, containers, NeMo/PyTorch training, cloud GPUs, Slurm, NCCL, Kubernetes, NVIDIA GPU Operator, observability, networking, storage, and troubleshooting**. The aim is to build practical experience connecting these components into reliable AI infrastructure and explain the tradeoffs clearly.
+The learning scope covers **GPU compute, containers, PyTorch/NeMo training, cloud infrastructure, Slurm, distributed communication, Kubernetes, observability, networking, storage, and troubleshooting**. Tool-specific labs will explore technologies such as CUDA, NCCL, and NVIDIA GPU Operator within that broader scope. The aim is to build practical experience designing and operating AI infrastructure and explain the tradeoffs clearly.
 
 ## Current status
 
@@ -12,16 +12,16 @@ Follow the planned milestones in [ROADMAP.md](ROADMAP.md) and the evidence-backe
 
 ## Learning objectives
 
-- Understand the GPU software stack, CUDA compatibility, resource usage, and failure modes.
+- Understand accelerator hardware, runtime and driver compatibility, resource usage, and failure modes.
 - Run reproducible containerized NeMo/PyTorch workloads on cloud GPUs.
-- Schedule GPU jobs with Slurm and investigate distributed communication with NCCL.
-- Operate GPU workloads on Kubernetes using NVIDIA GPU Operator.
+- Schedule compute jobs with Slurm and investigate distributed training and communication.
+- Operate GPU workloads on Kubernetes and explore device management and operators.
 - Evaluate observability, networking, and storage requirements, and document troubleshooting decisions.
 
 ## Repository layout
 
 ```text
-nvidia-sa-lab/
+ai-infrastructure-lab/
 ├── README.md
 ├── ROADMAP.md
 ├── PROGRESS.md
@@ -41,7 +41,7 @@ Empty directories contain `.gitkeep` placeholders so Git preserves the scaffold.
 
 ## Starting point
 
-The first planned lab is to identify a cloud GPU and inspect its driver, available memory, and reported CUDA compatibility using `nvidia-smi`. Provisioning details, commands, and observations will be recorded after the lab is performed.
+The first planned lab is to inspect a cloud compute environment and record its accelerator hardware, driver and runtime versions, available memory, and resource usage. Use the tooling appropriate to the environment, such as `nvidia-smi` for an NVIDIA GPU. Provisioning details, commands, and observations will be recorded after the lab is performed.
 
 ## Documentation standard
 
@@ -56,4 +56,4 @@ Each completed lab should record:
 
 Separate planned work from observed outcomes. Publish only reviewed, sanitized evidence; keep credentials, private data, datasets, checkpoints, and large generated artifacts out of Git.
 
-This is an independent learning portfolio and does not imply NVIDIA sponsorship or certification.
+This is an independent learning portfolio.
