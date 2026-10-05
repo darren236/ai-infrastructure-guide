@@ -8,9 +8,9 @@ The learning scope covers **GPU compute, containers, PyTorch/NeMo training, clou
 
 **Lab 01, Part 1 complete:** [Brev GPU Node Validation](docs/labs/01-brev-gpu-node-validation.md) documents cloud connectivity, Linux host identification, PCIe GPU visibility, and NVIDIA driver communication on an L4 node.
 
-**Latest milestone:** [CUDA host vs container architecture](docs/labs/01-brev-gpu-node-validation.md#part-2-cuda-host-vs-container-architecture) documents working host driver access, no Toolkit found in PATH or conventional locations, and the intended containerized deployment pattern.
+**Latest milestone:** [Docker, NVIDIA container GPU path, and CUDA devel image](docs/labs/01-brev-gpu-node-validation.md#part-3-docker-nvidia-container-gpu-path-and-cuda-devel-image) documents Docker validation, L4 visibility inside a CUDA base container, and CUDA 13.0 development-toolchain inspection.
 
-CUDA runtime execution, container CUDA Toolkit inspection, Docker, NVIDIA Container Toolkit, PyTorch, and NeMo validation remain pending. No training runs, deployments, benchmarks, or complete end-to-end lab are claimed.
+Actual CUDA kernel execution, PyTorch CUDA validation, and NeMo remain pending. No training runs, deployments, benchmarks, or complete end-to-end lab are claimed.
 
 Follow the planned milestones in [ROADMAP.md](ROADMAP.md) and the evidence-backed activity log in [PROGRESS.md](PROGRESS.md).
 
@@ -45,7 +45,7 @@ Empty directories contain `.gitkeep` placeholders so Git preserves the scaffold.
 
 ## Continue the guide
 
-Start with [Lab 01: GPU Node Validation](docs/labs/01-brev-gpu-node-validation.md) for the environment inventory, connectivity recovery, host Toolkit discovery, and host/container architecture. Next, validate Docker and NVIDIA Container Toolkit, then inspect and test CUDA inside the selected container.
+Start with [Lab 01: GPU Node Validation](docs/labs/01-brev-gpu-node-validation.md) for the environment inventory, connectivity recovery, host Toolkit discovery, and host/container architecture. Docker, NVIDIA container GPU access, and devel-image compiler inspection are documented in Part 3. Next, compile and execute a tiny CUDA program inside the GPU-enabled devel container.
 
 ## Documentation standard
 

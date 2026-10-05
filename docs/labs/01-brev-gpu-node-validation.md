@@ -2,7 +2,7 @@
 
 ## Part 1: Brev connectivity, Linux host, PCIe, and NVIDIA driver
 
-**Status:** Part 1 complete; host Toolkit discovery and host/container architecture documented in Part 2. CUDA runtime execution, containers, and frameworks remain unvalidated.
+**Status:** Parts 1–3 documented: host/driver validation, host Toolkit discovery, container GPU access, and CUDA development toolchain inspection complete. Actual CUDA kernel execution and framework workloads remain unvalidated.
 
 **Milestone recorded:** 2026-10-01. This is the documentation sync date.
 
@@ -139,7 +139,99 @@ The container's full CUDA Toolkit is optional: runtime images provide libraries 
 
 If `nvidia-smi` succeeds but `nvcc` is missing, do not assume the GPU node is broken. First determine whether the deployment is intended to be containerized and whether CUDA userspace is expected inside the container. For host-side compilation, inspect Toolkit installation and PATH configuration. For a containerized workload, validate the container runtime, NVIDIA Container Toolkit integration, and the selected image before claiming application readiness.
 
-Docker and NVIDIA Container Toolkit have **not** been validated yet. No container launch, container CUDA runtime test, PyTorch run, or NeMo run is claimed by this architecture milestone.
+At the Part 2 milestone, Docker and NVIDIA Container Toolkit had **not** yet been validated. That architecture milestone claimed no container launch, CUDA runtime test, PyTorch run, or NeMo run. Part 3 below records the subsequent container and toolchain checks.
+
+## Part 3: Docker, NVIDIA container GPU path, and CUDA devel image
+
+**Milestone recorded:** 2026-10-05, the documentation sync date. Evidence is the lab operator's sanitized summary; the maintainer did not rerun these checks on the remote VM.
+
+### Docker and NVIDIA integration
+
+Ran on the Brev GPU host:
+
+```bash
+which docker
+docker --version
+docker info | grep -i nvidia
+```
+
+| Check | Reported result |
+| --- | --- |
+| Docker executable | `/usr/bin/docker` |
+| Docker version | `29.8.2` |
+| NVIDIA CDI device names | Includes `nvidia.com/gpu=0` and `nvidia.com/gpu=all` |
+| Registered runtimes | `nvidia runc io.containerd.runc.v2` |
+| Default runtime | `nvidia` |
+
+Docker is installed and operational, with NVIDIA container integration configured. The successful GPU query below validates the working container GPU path. CDI entries show available device configuration; this evidence does not independently isolate whether that particular launch used CDI or another NVIDIA integration mode. A Container Toolkit package version was not captured.
+
+### GPU access from the base image
+
+```bash
+docker run --rm --gpus all nvidia/cuda:13.0.0-base-ubuntu22.04 nvidia-smi
+```
+
+The container successfully exposed the NVIDIA L4. The first run pulled the image because it was not cached locally; this was expected behavior, not an error. This validates the base image launch and GPU visibility through the host driver, rather than execution of a CUDA kernel.
+
+Inside the CUDA 13.0 image, `nvidia-smi` still reported `CUDA Version: 13.2`. That field reflects host driver compatibility, not the container's Toolkit version. Host driver and container Toolkit version numbers need not match; the driver must support the selected CUDA userspace and workload requirements. See NVIDIA's [CUDA compatibility guidance](https://docs.nvidia.com/deploy/cuda-compatibility/minor-version-compatibility.html).
+
+### Development toolchain inspection
+
+```bash
+docker run --rm nvidia/cuda:13.0.0-base-ubuntu22.04 which nvcc
+```
+
+No path was returned in the base image. The host also still has no Toolkit found in the previously checked PATH and conventional locations. Neither result indicates a broken GPU path.
+
+```bash
+docker run --rm nvidia/cuda:13.0.0-devel-ubuntu22.04 which nvcc
+docker run --rm nvidia/cuda:13.0.0-devel-ubuntu22.04 nvcc --version
+```
+
+The devel image returned `/usr/local/cuda/bin/nvcc`; its compiler reported CUDA compilation tools release `13.0`, version `V13.0.48`. These inspection commands did not request GPUs: they establish toolchain presence, not compilation or GPU execution.
+
+| CUDA image role | Purpose | Evidence in this milestone |
+| --- | --- | --- |
+| `base` | Minimal CUDA components | Image launched; L4 visible through `nvidia-smi`; no `nvcc` path returned |
+| `runtime` | Additional runtime libraries for executing packaged CUDA applications | Role documented; no runtime image tested |
+| `devel` | Development tools, including headers and `nvcc` | Compiler path and version inspected; no program compiled yet |
+
+These image roles are described in NVIDIA's [CUDA container image documentation](https://nvidia.github.io/container-wiki/toolkit/container-images.html).
+
+### Host and container responsibilities
+
+```text
+Host
+├── Ubuntu Linux
+├── NVIDIA driver
+└── NVIDIA L4
+
+         ↑
+NVIDIA container integration / CDI
+         ↓
+
+Container
+├── CUDA userspace
+├── optional CUDA development tools
+├── PyTorch / NeMo (next workload layers; not yet validated)
+└── application (not yet validated)
+```
+
+The host supplies the GPU and driver; the selected image supplies CUDA userspace and optional development tooling. NVIDIA integration makes host GPU access available inside the container. The observed runtime and CDI configuration supports this architecture; the framework and application layers are still planned.
+
+### SA troubleshooting progression
+
+| Check | Question it answers | Current status |
+| --- | --- | --- |
+| `nvidia-smi` | Can this environment query the GPU through the driver? | Validated on host and in base container |
+| `nvcc --version` | Is the CUDA development toolchain present? | Validated in devel image |
+| Tiny CUDA program | Can CUDA code compile and a kernel execute correctly? | Next step |
+| PyTorch CUDA test | Can the ML framework use the GPU? | Pending |
+| NeMo training | Can the real workload run? | Pending |
+
+`--gpus all` requests GPU exposure; a successful container `nvidia-smi` confirms that path. `nvcc --version` checks the compiler. Neither proves CUDA kernel execution.
+
+When a customer's framework workload fails, a minimal CUDA program provides a lower-layer test. A successful compile, kernel launch, synchronization, and result check helps narrow investigation toward framework/application code; a failure directs attention to the relevant compiler, CUDA, driver, or container layer. It does not establish that every workload requirement is satisfied.
 
 ## Completion boundaries and next step
 
@@ -151,13 +243,15 @@ Docker and NVIDIA Container Toolkit have **not** been validated yet. No containe
 | NVIDIA driver communication | Complete |
 | Host CUDA Toolkit discovery | Complete for PATH and conventional locations; no installation found |
 | Host/container architecture | Documented as the intended deployment pattern |
-| CUDA runtime availability and execution | Not yet complete |
-| CUDA Toolkit inspection inside a container | Not yet complete |
-| Docker validation | Not yet complete |
-| NVIDIA Container Toolkit validation | Not yet complete |
+| Actual CUDA kernel execution | Not yet complete |
+| CUDA devel image / `nvcc` inspection | Complete: release 13.0, V13.0.48; compilation still pending |
+| Docker installed and validated | Complete: reported version 29.8.2 |
+| NVIDIA container runtime/integration | Complete for the tested GPU access path; package version not recorded |
+| GPU passthrough into container | Complete: L4 visible with `--gpus all` |
+| CUDA base image validation | Complete for launch and GPU visibility; kernel execution pending |
 | PyTorch validation | Not yet complete |
 | NeMo validation | Not yet complete |
 
-Next, validate Docker and NVIDIA Container Toolkit integration. Then inspect the selected container's CUDA runtime and any development Toolkit, record their versions, and validate GPU access and CUDA execution inside the container before proceeding to PyTorch or NeMo.
+Next, compile and execute a tiny CUDA program in the devel container with GPU access enabled. Check kernel errors, synchronize, and verify the computed result before proceeding to PyTorch CUDA validation and NeMo. Actual CUDA kernel execution remains incomplete.
 
 Costs, storage configuration, and instance cleanup were not included in the supplied milestone evidence and remain undocumented.
