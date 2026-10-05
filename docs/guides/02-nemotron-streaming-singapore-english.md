@@ -41,7 +41,15 @@ Preflight checks help rule out simple causes such as disk exhaustion, current ho
 
 ## NeMo container and model on GPU — complete
 
-**Milestone recorded:** 2026-10-05, the documentation sync date. The operator successfully ran the following on the Linux GPU host:
+**Milestone recorded:** 2026-10-05, the documentation sync date. The operator validated the official NeMo Speech container on the Linux GPU host:
+
+```bash
+docker run --rm --gpus all \
+  nvcr.io/nvidia/nemo-speech:26.07.00 \
+  python -c "import nemo; print(nemo.__version__)"
+```
+
+The reported NeMo version was `3.0.0`. The operator then successfully restored the model with `ASRModel.from_pretrained(...)` and configured the persistent cache:
 
 ```bash
 mkdir -p ~/hf-cache
@@ -60,11 +68,69 @@ cuda:0
 
 This validates Docker GPU passthrough, the NeMo Speech stack for importing ASR and loading this model, and PyTorch/CUDA placement of model parameters on GPU 0. Earlier CUDA-container checks established the separation between the host NVIDIA driver and container CUDA userspace; this step extends that path to Nemotron model loading.
 
-The bind mount stores Hugging Face cache files in `~/hf-cache` on the host, outside the disposable container. Removing the container with `--rm` leaves those files in place for later runs. A second-run cache hit was not separately reported. Model placement alone does not establish successful audio inference.
+The bind mount stores Hugging Face cache files in `~/hf-cache` on the host, outside the disposable container. Removing the container with `--rm` leaves those files in place for later runs. A second-run cache hit was not separately reported. The model itself fits on the L4 for this loading check. Model placement alone does not establish successful audio inference or sufficient memory for training.
 
-## Next: transcribe one WAV — ready to run
+## NSC training/query and development data — downloaded and extracted
 
-Run these commands in the GPU host's shell, including when connected over SSH. They require no notebook, GUI, or microphone. This is whole-file inference with a streaming-capable model; true streaming is a later milestone.
+**Milestone recorded:** 2026-10-05, the documentation sync date. The operator downloaded the small NSC Part 6 training/query dataset and the separate development split from [IALP-2026-data on Hugging Face](https://huggingface.co/datasets/pengyizhou/IALP-2026-data). The counts and records below are operator-reported observations. Keep downloaded archives and audio on the GPU host, outside the repository.
+
+### Training/query split
+
+```bash
+wget https://huggingface.co/datasets/pengyizhou/IALP-2026-data/resolve/main/nsc-query.tar.gz
+tar xzf nsc-query.tar.gz
+wc -l nsc_query_5h/manifest.jsonl
+du -sh nsc_query_5h
+```
+
+Reported results: **2,289 manifest records** and **214M** extracted directory size (`du -sh`). The directory name is `nsc_query_5h`; its duration was not independently summed in this milestone.
+
+```text
+nsc_query_5h/
+├── audio/
+├── manifest.jsonl
+├── text
+├── utt2spk
+└── wav.scp
+```
+
+Example training record (ID and audio filename shortened):
+
+```json
+{"id":"...","speaker":"00038","duration":2.58,"text":"call one telco","audio":"audio/...flac"}
+```
+
+### Separate development split
+
+```bash
+wget https://huggingface.co/datasets/pengyizhou/IALP-2026-data/resolve/main/nsc-dev.tar.gz
+tar xzf nsc-dev.tar.gz
+wc -l nsc_dev_3h/manifest.jsonl
+```
+
+Reported result: **1,316 manifest records**.
+
+Example development record (ID and audio filename shortened):
+
+```json
+{"id":"...","speaker":"00017","duration":6.24,"text":"okay sure <v-noise> uh good afternoon may i have your contact number in case the line like get uh disconnected","audio":"audio/...flac"}
+```
+
+The inspected train/dev records share the fields `id`, `speaker`, `duration`, `text`, and `audio`, with relative FLAC paths. These source manifests have not yet been converted to NeMo format. Development transcripts can contain annotation tags such as `<v-noise>`; minimal preprocessing will strip these tags, but no cleanup has been performed yet.
+
+### Why keep development data separate?
+
+Evaluate on utterances and speakers not used for fine-tuning. Keeping the supplied dev split separate from training avoids reusing training examples for the POC's before/after comparison. Speaker and utterance overlap checks remain to be performed before claiming the split is disjoint; the two example records alone do not establish that.
+
+## Next: create tiny deterministic POC subsets — planned
+
+The next step is to select roughly **300 training utterances** from the query split and **50 development utterances** from the separate dev split, using a fixed selection rule or seed so the experiment can be reproduced. This step has not been executed.
+
+Tiny subset creation, NeMo manifest conversion, annotation-tag removal, baseline inference, the training smoke test, fine-tuning, checkpointing, and post-training evaluation all remain incomplete. The aim remains a small POC/tutorial, not production optimization.
+
+## Single-file inference reference — not yet executed
+
+These previously prepared commands remain available for a one-file check; they are not evidence of completed baseline inference. The current next milestone is the tiny subset selection above. Run these commands in the GPU host's shell, including when connected over SSH. They require no notebook, GUI, or microphone. This is whole-file inference with a streaming-capable model; true streaming is a later milestone.
 
 ### 1. Create an audio directory and download a small sample
 
@@ -138,14 +204,21 @@ Success means the process exits normally, reports `Model device: cuda:0`, and pr
 | Guide 02 stage | Status |
 | --- | --- |
 | Node resource preflight | Complete |
-| NeMo container validation | Complete for ASR import and model loading |
+| NeMo container validation | Complete: NeMo 3.0.0, ASR import and model loading |
 | Model download and loading | Complete: `EncDecRNNTBPEModelWithPrompt` |
 | Persistent Hugging Face cache | Host directory and bind mount configured; files survive container removal |
 | Model placement on GPU | Complete: `cuda:0` |
 | Single-file WAV inference | Instructions prepared; GPU execution and transcript pending |
-| Singapore English dataset preparation | Not yet complete |
-| Training / adaptation | Not yet complete |
-| Evaluation / benchmarking | Not yet complete |
+| NSC training/query download and extraction | Complete: 2,289 records, 214M |
+| NSC dev download and extraction | Complete: 1,316 records |
+| Tiny deterministic training/dev subsets | Not yet complete: approximately 300 / 50 planned |
+| NeMo manifest conversion | Not yet complete |
+| Annotation-tag removal | Not yet complete |
+| Baseline inference | Not yet complete |
+| Training smoke test | Not yet complete |
+| Fine-tuning | Not yet complete |
+| Checkpointing | Not yet complete |
+| Post-training evaluation / benchmarking | Not yet complete |
 | True streaming inference | Not yet complete |
 
-Next, run the single-file command above and record its actual transcript. The eventual progression is simple Docker validation → actual Nemotron inference → streaming inference → package the workload cleanly → submit the equivalent workload through SLURM. Only the single-file step is prepared here; orchestration and tuning remain future work.
+Next, create the tiny deterministic training/dev subsets. Downloads and source-manifest inspection are complete; preprocessing and baseline inference remain pending. The eventual infrastructure progression remains simple Docker validation → actual Nemotron inference → streaming inference → package the workload cleanly → submit the equivalent workload through SLURM. Streaming and scheduler work remain future milestones.

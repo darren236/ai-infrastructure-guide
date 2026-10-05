@@ -2,8 +2,8 @@
 
 ## Current state
 
-- **Documentation:** [Lab 01](docs/labs/01-brev-gpu-node-validation.md) covers node validation, CUDA host/container architecture, Docker/NVIDIA integration, CUDA image inspection, and PyTorch CUDA access. [Guide 02](docs/guides/02-nemotron-streaming-singapore-english.md) documents preflight and Nemotron model loading on GPU, with single-file inference instructions for a small Singapore English ASR POC.
-- **Guide 02:** Preflight, NeMo ASR import/model loading, persistent cache configuration, and model placement on `cuda:0` complete. Single-file inference is prepared but unexecuted; dataset preparation, adaptation, evaluation, and true streaming remain incomplete.
+- **Documentation:** [Lab 01](docs/labs/01-brev-gpu-node-validation.md) covers node validation, CUDA host/container architecture, Docker/NVIDIA integration, CUDA image inspection, and PyTorch CUDA access. [Guide 02](docs/guides/02-nemotron-streaming-singapore-english.md) documents preflight and Nemotron model loading on GPU, with NSC train/dev downloads and pending single-file inference instructions for a small Singapore English ASR POC.
+- **Guide 02:** Preflight, NeMo 3.0.0 container checks, model loading, persistent cache configuration, model placement on `cuda:0`, and NSC query/dev downloads and extraction complete. Tiny subsets, preprocessing, baseline inference, training, checkpointing, evaluation, and true streaming remain incomplete.
 - **Hands-on labs:** Lab 01 in progress; cloud connectivity, Linux host, PCIe GPU visibility, and NVIDIA driver communication validated. Host Toolkit discovery complete for the checked PATH and conventional locations; no installation found.
 - **Docker, NVIDIA container integration, container GPU passthrough, CUDA base image launch, and CUDA devel image / `nvcc` inspection:** Complete for the reported checks.
 - **PyTorch NGC container, CUDA availability, GPU identity, and interactive/one-liner workflows:** Validated or documented for the reported scope; interactive execution reported.
@@ -141,6 +141,18 @@ Updated [Guide 02](docs/guides/02-nemotron-streaming-singapore-english.md#nemo-c
 **Next milestone prepared:** Transcribe one small WAV in the same NeMo image, using persistent cache and a read-only host audio mount. Verified the NVIDIA-linked sample download (mono, 16 kHz, 7.4 seconds) and reviewed the documented transcription API. Instructions are ready for the SSH-accessed GPU node; inference and its resulting text remain pending.
 
 Singapore English dataset preparation, adaptation/training, evaluation, true streaming, benchmarking, and scheduler submission remain incomplete. This guide stays a small POC/tutorial.
+
+## 2026-10-05 — Guide 02: NeMo version and NSC train/dev data validated
+
+Updated [Guide 02](docs/guides/02-nemotron-streaming-singapore-english.md) with the operator's latest progress. Preflight confirmed 214 GB available disk, approximately 14 GiB available host RAM, and an idle NVIDIA L4 with 23,034 MiB VRAM and no GPU processes.
+
+**Container/model:** `nvcr.io/nvidia/nemo-speech:26.07.00` reported NeMo `3.0.0`. Restored `nvidia/nemotron-3.5-asr-streaming-0.6b` as `EncDecRNNTBPEModelWithPrompt`; with the persistent host Hugging Face cache mounted, model parameters moved to `cuda:0`. The model itself fits on the L4 for loading; training capacity has not been established.
+
+**Data:** Downloaded and extracted `nsc-query.tar.gz` and `nsc-dev.tar.gz` from `pengyizhou/IALP-2026-data`. Query data: `nsc_query_5h/manifest.jsonl` has 2,289 records; directory size reported as `214M`. Dev data: `nsc_dev_3h/manifest.jsonl` has 1,316 records. Inspected records share the source schema and relative FLAC audio paths; dev transcripts may contain `<v-noise>` annotation tags.
+
+The supplied dev split is reserved for a cleaner before/after comparison, separate from fine-tuning data. Speaker/utterance disjointness still needs checking. Annotation tags will be removed during minimal preprocessing; no tag removal or NeMo manifest conversion has been performed.
+
+**Next planned step:** Create deterministic POC subsets of approximately 300 training utterances and 50 dev utterances. Subset creation, manifest conversion, tag removal, baseline inference, training smoke test, fine-tuning, checkpointing, and post-training evaluation all remain incomplete. Existing one-WAV instructions remain an unexecuted reference. This remains a small POC/tutorial rather than production optimization.
 
 ## Updating this log
 
