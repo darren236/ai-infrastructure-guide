@@ -2,12 +2,12 @@
 
 ## Current state
 
-- **Documentation:** [Lab 01](docs/labs/01-brev-gpu-node-validation.md) covers node validation, CUDA host/container architecture, Docker/NVIDIA integration, CUDA image inspection, and PyTorch CUDA access. [Guide 02](docs/guides/02-nemotron-streaming-singapore-english.md) has started with node resource preflight for a small Singapore English streaming ASR POC.
-- **Guide 02:** Node preflight complete; NeMo container validation, model loading, dataset preparation, training, and evaluation remain incomplete.
+- **Documentation:** [Lab 01](docs/labs/01-brev-gpu-node-validation.md) covers node validation, CUDA host/container architecture, Docker/NVIDIA integration, CUDA image inspection, and PyTorch CUDA access. [Guide 02](docs/guides/02-nemotron-streaming-singapore-english.md) documents preflight and Nemotron model loading on GPU, with single-file inference instructions for a small Singapore English ASR POC.
+- **Guide 02:** Preflight, NeMo ASR import/model loading, persistent cache configuration, and model placement on `cuda:0` complete. Single-file inference is prepared but unexecuted; dataset preparation, adaptation, evaluation, and true streaming remain incomplete.
 - **Hands-on labs:** Lab 01 in progress; cloud connectivity, Linux host, PCIe GPU visibility, and NVIDIA driver communication validated. Host Toolkit discovery complete for the checked PATH and conventional locations; no installation found.
 - **Docker, NVIDIA container integration, container GPU passthrough, CUDA base image launch, and CUDA devel image / `nvcc` inspection:** Complete for the reported checks.
 - **PyTorch NGC container, CUDA availability, GPU identity, and interactive/one-liner workflows:** Validated or documented for the reported scope; interactive execution reported.
-- **Actual GPU computation, real training, NeMo, distributed training/NCCL, and performance benchmarking:** Not yet complete.
+- **Actual GPU inference/computation, real training, NeMo training, distributed training/NCCL, and performance benchmarking:** Not yet complete.
 - **Training runs, application deployments, and benchmarks:** None documented.
 
 ## 2026-10-01 — Initial scaffold
@@ -131,6 +131,16 @@ Before pulling the NeMo container or downloading the model/data, ran `df -h`, `f
 | Evaluation | Not yet complete |
 
 **Next step:** Validate the NeMo container for the small POC, then proceed to model loading and dataset preparation. No raw logs or sensitive connection details are included.
+
+## 2026-10-05 — Guide 02: Nemotron model loaded on GPU
+
+Updated [Guide 02](docs/guides/02-nemotron-streaming-singapore-english.md#nemo-container-and-model-on-gpu--complete) with the operator's successful use of `nvcr.io/nvidia/nemo-speech:26.07.00` and `nvidia/nemotron-3.5-asr-streaming-0.6b`. Created `~/hf-cache` on the GPU host and bind-mounted it into `/root/.cache/huggingface` so cached files remain outside the disposable container.
+
+**Observed result:** Loaded `EncDecRNNTBPEModelWithPrompt`; after `m.cuda()`, the parameter device printed `cuda:0`. This validates Docker GPU passthrough, the NeMo ASR import/model-loading path, and model placement on GPU 0. Earlier CUDA-container checks established the host-driver/container-userspace relationship. A second-run cache hit and actual transcription were not reported.
+
+**Next milestone prepared:** Transcribe one small WAV in the same NeMo image, using persistent cache and a read-only host audio mount. Verified the NVIDIA-linked sample download (mono, 16 kHz, 7.4 seconds) and reviewed the documented transcription API. Instructions are ready for the SSH-accessed GPU node; inference and its resulting text remain pending.
+
+Singapore English dataset preparation, adaptation/training, evaluation, true streaming, benchmarking, and scheduler submission remain incomplete. This guide stays a small POC/tutorial.
 
 ## Updating this log
 
