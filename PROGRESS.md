@@ -2,7 +2,8 @@
 
 ## Current state
 
-- **Documentation:** [Lab 01](docs/labs/01-brev-gpu-node-validation.md) covers node validation, CUDA host/container architecture, Docker/NVIDIA integration, CUDA image inspection, and PyTorch CUDA access.
+- **Documentation:** [Lab 01](docs/labs/01-brev-gpu-node-validation.md) covers node validation, CUDA host/container architecture, Docker/NVIDIA integration, CUDA image inspection, and PyTorch CUDA access. [Guide 02](docs/guides/02-nemotron-streaming-singapore-english.md) has started with node resource preflight for a small Singapore English streaming ASR POC.
+- **Guide 02:** Node preflight complete; NeMo container validation, model loading, dataset preparation, training, and evaluation remain incomplete.
 - **Hands-on labs:** Lab 01 in progress; cloud connectivity, Linux host, PCIe GPU visibility, and NVIDIA driver communication validated. Host Toolkit discovery complete for the checked PATH and conventional locations; no installation found.
 - **Docker, NVIDIA container integration, container GPU passthrough, CUDA base image launch, and CUDA devel image / `nvcc` inspection:** Complete for the reported checks.
 - **PyTorch NGC container, CUDA availability, GPU identity, and interactive/one-liner workflows:** Validated or documented for the reported scope; interactive execution reported.
@@ -109,6 +110,27 @@ Recorded the operator's sanitized milestone in [Lab 01, Part 4](docs/labs/01-bre
 **SA workflow:** Test the minimum needed to answer the customer's question in their real execution environment. Use host GPU query, container GPU query, PyTorch availability, real workload, and targeted deeper diagnostics as a troubleshooting ladder rather than a mandatory checklist.
 
 **Next decision:** Keep Lab 01 in progress until its completion scope is agreed. A small GPU tensor computation with synchronization and verified output is the recommended final functional check before Lab 02. No raw logs or sensitive connection details are included.
+
+## 2026-10-05 — Guide 02: node preflight documented
+
+Started [Guide 02 — Adapting NVIDIA Nemotron 3.5 Streaming ASR to Singapore English](docs/guides/02-nemotron-streaming-singapore-english.md), intentionally scoped to a small POC/tutorial rather than production-quality tuning. This date records the documentation sync of the operator's sanitized summary.
+
+Before pulling the NeMo container or downloading the model/data, ran `df -h`, `free -h`, and `nvidia-smi` on the GPU node.
+
+**Observed resources:** Root filesystem 267 GB total, 53 GB used, and 214 GB available (operator-reported rounded units); host RAM 15 GiB total with approximately 14 GiB available; no swap. NVIDIA L4 with 23,034 MiB VRAM, 0 MiB used, 0% utilization, driver `595.91.07`, driver-reported CUDA compatibility `13.2`, and no running GPU processes.
+
+**Learning point:** Filesystem capacity, system RAM, and GPU VRAM are separate resources. Linux filesystem cache can make `free` RAM low while `available` RAM remains high. Check these basics before investigating container/model failures; an idle resource snapshot does not establish capacity under workload.
+
+| Guide 02 stage | Status |
+| --- | --- |
+| Node resource preflight | Complete |
+| NeMo container validation | Not yet complete |
+| Model loading | Not yet complete |
+| Dataset preparation | Not yet complete |
+| Training | Not yet complete |
+| Evaluation | Not yet complete |
+
+**Next step:** Validate the NeMo container for the small POC, then proceed to model loading and dataset preparation. No raw logs or sensitive connection details are included.
 
 ## Updating this log
 
