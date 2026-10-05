@@ -8,7 +8,9 @@ The learning scope covers **GPU compute, containers, PyTorch/NeMo training, clou
 
 **Lab 01, Part 1 complete:** [Brev GPU Node Validation](docs/labs/01-brev-gpu-node-validation.md) documents cloud connectivity, Linux host identification, PCIe GPU visibility, and NVIDIA driver communication on an L4 node.
 
-CUDA userspace/Toolkit, Docker, NVIDIA Container Toolkit, PyTorch, and NeMo validation remain pending. No training runs, deployments, benchmarks, or complete end-to-end lab are claimed.
+**Latest milestone:** [CUDA host vs container architecture](docs/labs/01-brev-gpu-node-validation.md#part-2-cuda-host-vs-container-architecture) documents working host driver access, no Toolkit found in PATH or conventional locations, and the intended containerized deployment pattern.
+
+CUDA runtime execution, container CUDA Toolkit inspection, Docker, NVIDIA Container Toolkit, PyTorch, and NeMo validation remain pending. No training runs, deployments, benchmarks, or complete end-to-end lab are claimed.
 
 Follow the planned milestones in [ROADMAP.md](ROADMAP.md) and the evidence-backed activity log in [PROGRESS.md](PROGRESS.md).
 
@@ -43,7 +45,7 @@ Empty directories contain `.gitkeep` placeholders so Git preserves the scaffold.
 
 ## Continue the guide
 
-Start with [Lab 01: GPU Node Validation](docs/labs/01-brev-gpu-node-validation.md) for the environment inventory, connectivity recovery, validation workflow, and lessons learned. The next step is to validate CUDA userspace and the Toolkit, distinguishing installed components from the driver's reported CUDA compatibility level.
+Start with [Lab 01: GPU Node Validation](docs/labs/01-brev-gpu-node-validation.md) for the environment inventory, connectivity recovery, host Toolkit discovery, and host/container architecture. Next, validate Docker and NVIDIA Container Toolkit, then inspect and test CUDA inside the selected container.
 
 ## Documentation standard
 

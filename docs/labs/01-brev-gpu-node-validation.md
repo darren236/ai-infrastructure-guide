@@ -2,7 +2,7 @@
 
 ## Part 1: Brev connectivity, Linux host, PCIe, and NVIDIA driver
 
-**Status:** Part 1 complete; CUDA userspace, containers, and frameworks remain unvalidated.
+**Status:** Part 1 complete; host Toolkit discovery and host/container architecture documented in Part 2. CUDA runtime execution, containers, and frameworks remain unvalidated.
 
 **Milestone recorded:** 2026-10-01. This is the documentation sync date.
 
@@ -27,7 +27,8 @@ Connected to a Brev-managed VM after resolving an SSH access issue, identified t
 | Linux kernel | `6.8.0-1069-gcp` |
 | NVIDIA driver | `595.91.07` |
 | Driver-reported CUDA compatibility level | `13.2` |
-| Installed CUDA Toolkit and userspace runtime | Not yet validated |
+| Host CUDA Toolkit | No installation found in PATH or conventional `/usr/local/cuda*` locations; see Part 2 |
+| CUDA userspace runtime and workload execution | Not yet validated |
 
 ### Validation workflow
 
@@ -79,9 +80,9 @@ The `CUDA Version: 13.2` field in `nvidia-smi` describes the CUDA compatibility 
 | --- | --- | --- |
 | NVIDIA driver | Provides GPU access; `nvidia-smi` reports driver-level compatibility and telemetry. | Driver communication validated |
 | CUDA runtime / userspace | Supplies libraries used by CUDA applications; versions depend on the selected environment. | Not yet validated |
-| CUDA Toolkit | Supplies development tools, including `nvcc`, and libraries for building CUDA software. | Not yet validated |
+| CUDA Toolkit | Supplies development tools, including `nvcc`, and libraries for building CUDA software. | Host discovery completed for the checked paths; no installation found. CUDA Toolkit contents inside a container not yet inspected. |
 
-Application compatibility also depends on the hardware, required features, and applicable [CUDA compatibility rules](https://docs.nvidia.com/deploy/cuda-compatibility/minor-version-compatibility.html). Record the actual runtime and Toolkit separately in the next step.
+Application compatibility also depends on the hardware, required features, and applicable [CUDA compatibility rules](https://docs.nvidia.com/deploy/cuda-compatibility/minor-version-compatibility.html). Record actual application runtime and Toolkit versions separately when inspecting the selected container environment.
 
 ### Infrastructure lessons
 
@@ -91,7 +92,56 @@ Application compatibility also depends on the hardware, required features, and a
 - **Validate the access plane independently.** A cloud instance marked running still requires a successful SSH connection. In this session, refreshing Brev's connection configuration and reauthenticating restored access.
 - **Inspect the infrastructure beneath the access tool.** The `-gcp` kernel suffix is consistent with the GCP-specific Ubuntu kernel used in [Google Cloud Ubuntu images](https://docs.cloud.google.com/compute/docs/images/os-details). This is a clue about the underlying environment; a kernel flavor alone does not independently prove cloud provider tenancy.
 
-### Completion boundaries and next step
+## Part 2: CUDA host vs container architecture
+
+**Milestone recorded:** 2026-10-05, the documentation sync date. The observations below come from the lab operator's sanitized milestone summary.
+
+### Host Toolkit discovery
+
+| Check | Reported observation | Interpretation |
+| --- | --- | --- |
+| `nvidia-smi` | Succeeded; driver `595.91.07`, `CUDA Version: 13.2` | GPU communication through the installed driver works; the CUDA field is a driver compatibility report. |
+| `which nvcc` | Returned no path | The CUDA compiler was not available through the current shell's PATH. |
+| `/usr/local/cuda/bin/nvcc` | File does not exist | The compiler was not present at this conventional location. |
+| Conventional `/usr/local/cuda*` locations | No Toolkit installation found | No standard installation was discovered in the locations checked. |
+
+**Operational conclusion:** The host has a working NVIDIA driver and GPU access, with no host CUDA Toolkit found by these checks. `nvidia-smi` reporting `13.2` does **not** mean CUDA Toolkit 13.2 is installed. It reports the driver's supported CUDA compatibility level, including support for applications built with Toolkits up to that level, subject to hardware and compatibility requirements.
+
+The discovery scope matters: a missing `nvcc` and absent conventional paths do not establish that every possible installation location or environment has been searched. Toolkit installations can use alternate paths, and runtime libraries can exist without the compiler. NVIDIA's [Linux installation guide](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/) covers configurable Toolkit paths and PATH setup. CUDA runtime availability and execution have not been validated in this milestone.
+
+### Common containerized deployment pattern
+
+A common production pattern keeps the host relatively minimal, with Linux and the NVIDIA driver providing GPU access. CUDA userspace libraries, PyTorch/NeMo, and application dependencies are supplied inside containers. The host does not require a CUDA Toolkit installation for this pattern; NVIDIA explicitly documents that distinction in the [NVIDIA Container Toolkit project](https://github.com/NVIDIA/nvidia-container-toolkit).
+
+The following diagram shows the intended architecture, rather than an already validated deployment:
+
+```text
+Host
+├── Linux
+├── NVIDIA driver
+└── NVIDIA GPU
+
+         ↑
+NVIDIA Container Toolkit
+         ↓
+
+Container
+├── CUDA runtime / toolkit
+├── PyTorch / NeMo
+└── Training application
+```
+
+NVIDIA Container Toolkit is a host-side integration component that enables a container runtime, such as Docker, to expose GPU devices and required host driver libraries to containers. It is separate from the CUDA Toolkit and its compiler. The container uses the host GPU and driver rather than replacing them. See NVIDIA's [container architecture overview](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/arch-overview.html).
+
+The container's full CUDA Toolkit is optional: runtime images provide libraries for execution, while development images add compilation tools such as `nvcc`. Select the image according to whether the workload needs to build CUDA code or run packaged software. NVIDIA describes this distinction in its [CUDA container image documentation](https://nvidia.github.io/container-wiki/toolkit/container-images.html).
+
+### Troubleshooting takeaway
+
+If `nvidia-smi` succeeds but `nvcc` is missing, do not assume the GPU node is broken. First determine whether the deployment is intended to be containerized and whether CUDA userspace is expected inside the container. For host-side compilation, inspect Toolkit installation and PATH configuration. For a containerized workload, validate the container runtime, NVIDIA Container Toolkit integration, and the selected image before claiming application readiness.
+
+Docker and NVIDIA Container Toolkit have **not** been validated yet. No container launch, container CUDA runtime test, PyTorch run, or NeMo run is claimed by this architecture milestone.
+
+## Completion boundaries and next step
 
 | Area | Status |
 | --- | --- |
@@ -99,12 +149,15 @@ Application compatibility also depends on the hardware, required features, and a
 | Linux host identification | Complete |
 | NVIDIA PCIe device visibility | Complete |
 | NVIDIA driver communication | Complete |
-| CUDA userspace and Toolkit validation | Not yet complete |
+| Host CUDA Toolkit discovery | Complete for PATH and conventional locations; no installation found |
+| Host/container architecture | Documented as the intended deployment pattern |
+| CUDA runtime availability and execution | Not yet complete |
+| CUDA Toolkit inspection inside a container | Not yet complete |
 | Docker validation | Not yet complete |
 | NVIDIA Container Toolkit validation | Not yet complete |
 | PyTorch validation | Not yet complete |
 | NeMo validation | Not yet complete |
 
-Next, inspect the available CUDA userspace and Toolkit, record which environment supplies each component, and distinguish their versions from the driver's compatibility report. CUDA execution must be validated separately before claiming readiness for containers or training.
+Next, validate Docker and NVIDIA Container Toolkit integration. Then inspect the selected container's CUDA runtime and any development Toolkit, record their versions, and validate GPU access and CUDA execution inside the container before proceeding to PyTorch or NeMo.
 
 Costs, storage configuration, and instance cleanup were not included in the supplied milestone evidence and remain undocumented.

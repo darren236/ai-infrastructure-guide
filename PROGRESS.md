@@ -2,9 +2,9 @@
 
 ## Current state
 
-- **Documentation:** Repository scaffold and [Lab 01, Part 1](docs/labs/01-brev-gpu-node-validation.md) published.
-- **Hands-on labs:** Lab 01 in progress; cloud connectivity, Linux host, PCIe GPU visibility, and NVIDIA driver communication validated.
-- **CUDA userspace/Toolkit, Docker, NVIDIA Container Toolkit, PyTorch, and NeMo:** Not yet complete.
+- **Documentation:** [Lab 01](docs/labs/01-brev-gpu-node-validation.md) covers node validation and CUDA host/container architecture.
+- **Hands-on labs:** Lab 01 in progress; cloud connectivity, Linux host, PCIe GPU visibility, and NVIDIA driver communication validated. Host Toolkit discovery complete for the checked PATH and conventional locations; no installation found.
+- **CUDA runtime execution, container CUDA Toolkit inspection, Docker, NVIDIA Container Toolkit, PyTorch, and NeMo:** Not yet complete.
 - **Training runs, application deployments, and benchmarks:** None documented.
 
 ## 2026-10-01 — Initial scaffold
@@ -44,6 +44,24 @@ Recorded the lab operator's sanitized milestone summary in [the lab write-up](do
 **Troubleshooting lesson:** Cloud VM running status did not establish working SSH access. Refreshing Brev connection configuration and reauthenticating restored connectivity; an underlying root cause was not independently isolated.
 
 **Next step:** Validate CUDA userspace and Toolkit availability and versions, then distinguish them from driver compatibility. No raw terminal logs, authentication URLs, email addresses, organization identifiers, SSH configuration, tokens, or instance-specific connection details are included in the milestone.
+
+## 2026-10-05 — Lab 01: CUDA host vs container architecture documented
+
+Recorded the lab operator's latest sanitized milestone summary in [Lab 01, Part 2](docs/labs/01-brev-gpu-node-validation.md#part-2-cuda-host-vs-container-architecture). This entry's date records the documentation sync.
+
+| Area | Status | Evidence or boundary |
+| --- | --- | --- |
+| Host driver and GPU access | Working | `nvidia-smi` succeeds and reports driver `595.91.07` and CUDA compatibility level `13.2`. |
+| Host CUDA Toolkit discovery | Complete within the checked scope | `which nvcc` returned no path, `/usr/local/cuda/bin/nvcc` does not exist, and no conventional `/usr/local/cuda*` Toolkit installation was found. Alternate locations and environments were not exhaustively audited. |
+| Host/container architecture | Documented | Added a conceptual diagram and explained the common pattern of a driver-enabled host with CUDA libraries, frameworks, and application dependencies supplied in containers. |
+| CUDA runtime and workload execution | Not yet complete | Driver compatibility does not identify installed runtime/Toolkit versions or establish CUDA execution. |
+| Docker | Not yet complete | Validation is a next step. |
+| NVIDIA Container Toolkit | Not yet complete | GPU integration with the container runtime has not been validated. |
+| Container CUDA Toolkit, PyTorch, and NeMo | Not yet complete | No container inspection or framework execution reported. |
+
+**Learning point:** A working `nvidia-smi` with missing `nvcc` does not by itself indicate a broken GPU node. First identify the intended deployment model and where CUDA userspace should live. A host CUDA Toolkit is not required for the documented containerized pattern; this does not establish that Toolkit-free hosts are universal.
+
+**Next step:** Validate Docker and NVIDIA Container Toolkit, then inspect and test CUDA GPU access inside the selected container. No raw logs or sensitive access details are included.
 
 ## Updating this log
 

@@ -1,10 +1,10 @@
 # Learning Roadmap
 
-Milestone 01 is **in progress**: host access, Linux identification, PCIe visibility, and NVIDIA driver communication are documented in [Lab 01, Part 1](docs/labs/01-brev-gpu-node-validation.md). CUDA userspace and Toolkit validation remain pending. Milestones 02–08 are planned; the sequence can be adjusted as the learning journey develops.
+Milestone 01 is **in progress**: host access, Linux identification, PCIe visibility, driver communication, host Toolkit discovery, and host/container architecture are documented in [Lab 01](docs/labs/01-brev-gpu-node-validation.md). Docker, NVIDIA Container Toolkit, container CUDA inspection, and runtime execution remain pending. Milestones 02–08 are planned; the sequence can be adjusted as the learning journey develops.
 
 | Milestone | Focus | Evidence to produce |
 | --- | --- | --- |
-| 01 — Compute and accelerator foundations (in progress) | Inspect cloud compute, accelerator hardware, drivers, runtimes, memory, and basic utilization. | [Part 1 documented](docs/labs/01-brev-gpu-node-validation.md): sanitized host/driver observations and workflow. CUDA userspace and Toolkit validation pending. |
+| 01 — Compute and accelerator foundations (in progress) | Inspect cloud compute, accelerator hardware, drivers, runtimes, memory, and basic utilization. | [Parts 1–2 documented](docs/labs/01-brev-gpu-node-validation.md): host/driver checks, Toolkit discovery, and architecture. Container GPU access and CUDA runtime execution pending. |
 | 02 — Containers and training | Establish a reproducible container environment and run a small PyTorch training workload; explore NeMo workflows. | Container definition, runnable commands, configuration, and observed training behavior. |
 | 03 — Storage and data access | Explore cloud and local storage, data movement, capacity, and I/O behavior. | Storage architecture, reproducible checks, measured observations, and cleanup notes. |
 | 04 — Slurm | Configure a suitable lab environment, submit GPU jobs, and inspect scheduling, allocation, logs, and failures. | Configuration, job scripts, observed job states, and troubleshooting notes. |
