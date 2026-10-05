@@ -1,4 +1,4 @@
-# Lab 01 — GPU Node Validation
+# Guide 01 — GPU Node Validation
 
 ## Part 1: Brev connectivity, Linux host, PCIe, and NVIDIA driver
 
@@ -6,7 +6,7 @@
 
 **Milestone recorded:** 2026-10-01. This is the documentation sync date.
 
-**Evidence basis:** The lab operator's sanitized milestone summary of commands performed and observations. Raw terminal recordings and instance connection details are excluded.
+**Evidence basis:** The operator's sanitized milestone summary of commands performed and observations. Raw terminal recordings and instance connection details are excluded.
 
 ### Objective and outcome
 
@@ -19,7 +19,7 @@ Connected to a Brev-managed VM after resolving an SSH access issue, identified t
 | Component | Reported value |
 | --- | --- |
 | Provisioning and access platform | Brev cloud GPU VM |
-| Underlying cloud | GCP, as reported by the lab operator; the kernel flavor is consistent with that environment |
+| Underlying cloud | GCP, as reported by the operator; the kernel flavor is consistent with that environment |
 | GPU | NVIDIA L4, 24 GB class VRAM |
 | GPU memory reported by `nvidia-smi` | 23034 MiB |
 | Architecture | x86_64 |
@@ -94,7 +94,7 @@ Application compatibility also depends on the hardware, required features, and a
 
 ## Part 2: CUDA host vs container architecture
 
-**Milestone recorded:** 2026-10-05, the documentation sync date. The observations below come from the lab operator's sanitized milestone summary.
+**Milestone recorded:** 2026-10-05, the documentation sync date. The observations below come from the operator's sanitized milestone summary.
 
 ### Host Toolkit discovery
 
@@ -143,7 +143,7 @@ At the Part 2 milestone, Docker and NVIDIA Container Toolkit had **not** yet bee
 
 ## Part 3: Docker, NVIDIA container GPU path, and CUDA devel image
 
-**Milestone recorded:** 2026-10-05, the documentation sync date. Evidence is the lab operator's sanitized summary; the maintainer did not rerun these checks on the remote VM.
+**Milestone recorded:** 2026-10-05, the documentation sync date. Evidence is the operator's sanitized summary; the maintainer did not rerun these checks on the remote VM.
 
 ### Docker and NVIDIA integration
 
@@ -314,7 +314,7 @@ Start the container and Python using the commands above, then type the Python ex
 | 4 | Actual customer workload | Does the real application run correctly? |
 | 5 | Targeted deeper diagnostics | Is performance limited by NCCL, storage, CPU feed, networking, or another layer? |
 
-An SA should not run every diagnostic every time. Use the minimum test that answers the current customer question, preferably in the customer's real execution environment. Follow failures toward the relevant layer; use deeper diagnostics when symptoms justify them. Availability and identity checks answer the access question, while a real GPU tensor computation is a useful final functional check before deciding whether to close Lab 01.
+An SA should not run every diagnostic every time. Use the minimum test that answers the current customer question, preferably in the customer's real execution environment. Follow failures toward the relevant layer; use deeper diagnostics when symptoms justify them. Availability and identity checks answer the access question, while a real GPU tensor computation is a useful final functional check before deciding whether to close Guide 01.
 
 ## Completion boundaries and next step
 
@@ -342,6 +342,6 @@ An SA should not run every diagnostic every time. Use the minimum test that answ
 | Performance benchmarking | Not yet complete |
 | NeMo validation | Not yet complete |
 
-Lab 01 remains in progress pending the completion decision. A recommended final functional check is a small GPU tensor computation in the same PyTorch container, with synchronization and result verification. A standalone CUDA compile/kernel test remains unperformed and can be used when that lower-layer question matters. Real training, NeMo, distributed training/NCCL, and performance benchmarking remain incomplete.
+Guide 01 remains in progress pending the completion decision. A recommended final functional check is a small GPU tensor computation in the same PyTorch container, with synchronization and result verification. A standalone CUDA compile/kernel test remains unperformed and can be used when that lower-layer question matters. Real training, NeMo, distributed training/NCCL, and performance benchmarking remain incomplete.
 
 Costs, storage configuration, and instance cleanup were not included in the supplied milestone evidence and remain undocumented.
