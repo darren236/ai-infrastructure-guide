@@ -2,7 +2,7 @@
 
 ## Part 1: Brev connectivity, Linux host, PCIe, and NVIDIA driver
 
-**Status:** Parts 1–3 documented: host/driver validation, host Toolkit discovery, container GPU access, and CUDA development toolchain inspection complete. Actual CUDA kernel execution and framework workloads remain unvalidated.
+**Status:** Parts 1–4 documented: host/driver validation, host Toolkit discovery, container GPU access, CUDA development toolchain inspection, and PyTorch CUDA availability/device identity checks complete. Actual GPU computation and real workloads remain unvalidated.
 
 **Milestone recorded:** 2026-10-01. This is the documentation sync date.
 
@@ -233,6 +233,89 @@ The host supplies the GPU and driver; the selected image supplies CUDA userspace
 
 When a customer's framework workload fails, a minimal CUDA program provides a lower-layer test. A successful compile, kernel launch, synchronization, and result check helps narrow investigation toward framework/application code; a failure directs attention to the relevant compiler, CUDA, driver, or container layer. It does not establish that every workload requirement is satisfied.
 
+## Part 4: PyTorch CUDA access through an NVIDIA NGC container
+
+**Milestone recorded:** 2026-10-05, the documentation sync date. Results and startup-banner observations come from the operator's sanitized summary; the maintainer did not rerun the remote GPU checks.
+
+### Interactive validation and observed results
+
+On the GPU host, started the container and then entered Python inside it:
+
+```bash
+docker run --rm --gpus all -it nvcr.io/nvidia/pytorch:26.09-py3 bash
+python
+```
+
+At the Python prompt:
+
+```python
+import torch
+torch.__version__
+torch.version.cuda
+torch.cuda.is_available()
+torch.cuda.get_device_name(0)
+```
+
+| Check | Reported result |
+| --- | --- |
+| PyTorch version | `2.14.0a0+b2c75dd062.nv26.09` |
+| PyTorch CUDA build (`torch.version.cuda`) | `13.4` |
+| CUDA availability | `True` |
+| GPU identity at index 0 | `NVIDIA L4` |
+| Container release banner | NVIDIA Release `26.09` |
+| Compatibility banner | CUDA Forward Compatibility mode enabled; CUDA 13.4 compatibility components in container userspace |
+| Host kernel driver | Remains `595.91.07` |
+
+PyTorch successfully detected CUDA and identified the L4 through the containerized stack. This milestone validates framework CUDA availability and GPU identity; no GPU tensor calculation, CUDA kernel result, training run, or benchmark was reported.
+
+### Validated access path and compatibility
+
+```text
+PyTorch
+   ↓
+CUDA userspace in container
+   ↓
+NVIDIA container integration
+   ↓
+host NVIDIA driver
+   ↓
+NVIDIA L4
+```
+
+PyTorch's CUDA build version is separate from the host driver's reported compatibility level. In this session the container reported forward-compatibility mode, while the host kernel driver remained unchanged. NVIDIA's [forward-compatibility documentation](https://docs.nvidia.com/deploy/cuda-compatibility/forward-compatibility.html) describes compatible userspace driver components operating with an older kernel driver on supported hardware/driver combinations. Versions need not be identical, but NVIDIA's platform, driver, and feature requirements still apply. The banner and availability results do not prove every workload or feature is supported.
+
+### Two practical validation workflows
+
+**Fast one-liner / copy-paste workflow — host shell:**
+
+```bash
+docker run --rm --gpus all \
+  nvcr.io/nvidia/pytorch:26.09-py3 \
+  python -c "import torch; print(torch.__version__); print(torch.cuda.is_available()); print(torch.cuda.get_device_name(0))"
+```
+
+Use for quick smoke tests, repeatable diagnostics, and remote support. This is a documented equivalent of the interactive checks; a separate execution was not reported. It prints the PyTorch version, availability, and GPU name. Add `print(torch.version.cuda)` when CUDA build details are needed.
+
+**Interactive / no-copy-paste workflow:**
+
+Start the container and Python using the commands above, then type the Python expressions individually. Use for customer consoles, manual troubleshooting, and step-by-step inspection. Run Docker on the host and the `torch` expressions inside the container's Python session. Exit Python with `exit()` and the container shell with `exit`; `--rm` removes the stopped container, while the downloaded image remains cached.
+
+### Small troubleshooting lesson: spelling before infrastructure
+
+`torch.cuda.is_availble()` produced an `AttributeError` because the attribute name was misspelled. The correct `torch.cuda.is_available()` returned `True`. Check the exact API name and error message before treating a user/application mistake as a driver, CUDA, or container failure.
+
+### SA workflow: choose the test for the question
+
+| Step | Minimum check | Customer question |
+| --- | --- | --- |
+| 1 | Host `nvidia-smi` | Does the node see the GPU through its driver? |
+| 2 | Container-level `nvidia-smi` | Can the container access the GPU? |
+| 3 | `torch.cuda.is_available()` and device identity | Does PyTorch detect usable CUDA and the expected GPU? |
+| 4 | Actual customer workload | Does the real application run correctly? |
+| 5 | Targeted deeper diagnostics | Is performance limited by NCCL, storage, CPU feed, networking, or another layer? |
+
+An SA should not run every diagnostic every time. Use the minimum test that answers the current customer question, preferably in the customer's real execution environment. Follow failures toward the relevant layer; use deeper diagnostics when symptoms justify them. Availability and identity checks answer the access question, while a real GPU tensor computation is a useful final functional check before deciding whether to close Lab 01.
+
 ## Completion boundaries and next step
 
 | Area | Status |
@@ -249,9 +332,16 @@ When a customer's framework workload fails, a minimal CUDA program provides a lo
 | NVIDIA container runtime/integration | Complete for the tested GPU access path; package version not recorded |
 | GPU passthrough into container | Complete: L4 visible with `--gpus all` |
 | CUDA base image validation | Complete for launch and GPU visibility; kernel execution pending |
-| PyTorch validation | Not yet complete |
+| PyTorch NGC container | Complete for startup and reported checks: `26.09-py3` |
+| PyTorch CUDA availability | Complete: `True` |
+| GPU identity visible from PyTorch | Complete: NVIDIA L4 |
+| Interactive and one-liner workflows | Documented; interactive execution reported |
+| Real GPU tensor computation | Not yet complete |
+| Real training workload | Not yet complete |
+| Distributed training / NCCL | Not yet complete |
+| Performance benchmarking | Not yet complete |
 | NeMo validation | Not yet complete |
 
-Next, compile and execute a tiny CUDA program in the devel container with GPU access enabled. Check kernel errors, synchronize, and verify the computed result before proceeding to PyTorch CUDA validation and NeMo. Actual CUDA kernel execution remains incomplete.
+Lab 01 remains in progress pending the completion decision. A recommended final functional check is a small GPU tensor computation in the same PyTorch container, with synchronization and result verification. A standalone CUDA compile/kernel test remains unperformed and can be used when that lower-layer question matters. Real training, NeMo, distributed training/NCCL, and performance benchmarking remain incomplete.
 
 Costs, storage configuration, and instance cleanup were not included in the supplied milestone evidence and remain undocumented.

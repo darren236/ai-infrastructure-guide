@@ -8,9 +8,9 @@ The learning scope covers **GPU compute, containers, PyTorch/NeMo training, clou
 
 **Lab 01, Part 1 complete:** [Brev GPU Node Validation](docs/labs/01-brev-gpu-node-validation.md) documents cloud connectivity, Linux host identification, PCIe GPU visibility, and NVIDIA driver communication on an L4 node.
 
-**Latest milestone:** [Docker, NVIDIA container GPU path, and CUDA devel image](docs/labs/01-brev-gpu-node-validation.md#part-3-docker-nvidia-container-gpu-path-and-cuda-devel-image) documents Docker validation, L4 visibility inside a CUDA base container, and CUDA 13.0 development-toolchain inspection.
+**Latest milestone:** [PyTorch CUDA access through an NVIDIA NGC container](docs/labs/01-brev-gpu-node-validation.md#part-4-pytorch-cuda-access-through-an-nvidia-ngc-container) documents PyTorch CUDA availability and NVIDIA L4 identity in the `26.09-py3` container, its reported forward-compatibility mode, and interactive/one-liner workflows.
 
-Actual CUDA kernel execution, PyTorch CUDA validation, and NeMo remain pending. No training runs, deployments, benchmarks, or complete end-to-end lab are claimed.
+Actual GPU computation, real training, NeMo, distributed training/NCCL, and performance benchmarking remain pending. No training runs, deployments, benchmarks, or complete end-to-end lab are claimed.
 
 Follow the planned milestones in [ROADMAP.md](ROADMAP.md) and the evidence-backed activity log in [PROGRESS.md](PROGRESS.md).
 
@@ -45,7 +45,7 @@ Empty directories contain `.gitkeep` placeholders so Git preserves the scaffold.
 
 ## Continue the guide
 
-Start with [Lab 01: GPU Node Validation](docs/labs/01-brev-gpu-node-validation.md) for the environment inventory, connectivity recovery, host Toolkit discovery, and host/container architecture. Docker, NVIDIA container GPU access, and devel-image compiler inspection are documented in Part 3. Next, compile and execute a tiny CUDA program inside the GPU-enabled devel container.
+Start with [Lab 01: GPU Node Validation](docs/labs/01-brev-gpu-node-validation.md) for the environment inventory, connectivity recovery, host Toolkit discovery, and host/container architecture. Docker, NVIDIA container GPU access, and devel-image compiler inspection are documented in Part 3. PyTorch availability and device identity checks are documented in Part 4. Lab 01 remains in progress; a small GPU tensor computation with verified output is the recommended final functional check before deciding whether to move to Lab 02.
 
 ## Documentation standard
 

@@ -2,10 +2,11 @@
 
 ## Current state
 
-- **Documentation:** [Lab 01](docs/labs/01-brev-gpu-node-validation.md) covers node validation, CUDA host/container architecture, Docker/NVIDIA integration, and CUDA image inspection.
+- **Documentation:** [Lab 01](docs/labs/01-brev-gpu-node-validation.md) covers node validation, CUDA host/container architecture, Docker/NVIDIA integration, CUDA image inspection, and PyTorch CUDA access.
 - **Hands-on labs:** Lab 01 in progress; cloud connectivity, Linux host, PCIe GPU visibility, and NVIDIA driver communication validated. Host Toolkit discovery complete for the checked PATH and conventional locations; no installation found.
 - **Docker, NVIDIA container integration, container GPU passthrough, CUDA base image launch, and CUDA devel image / `nvcc` inspection:** Complete for the reported checks.
-- **Actual CUDA kernel execution, PyTorch CUDA validation, and NeMo:** Not yet complete.
+- **PyTorch NGC container, CUDA availability, GPU identity, and interactive/one-liner workflows:** Validated or documented for the reported scope; interactive execution reported.
+- **Actual GPU computation, real training, NeMo, distributed training/NCCL, and performance benchmarking:** Not yet complete.
 - **Training runs, application deployments, and benchmarks:** None documented.
 
 ## 2026-10-01 — Initial scaffold
@@ -84,6 +85,30 @@ Recorded the operator's sanitized milestone in [Lab 01, Part 3](docs/labs/01-bre
 **SA lesson:** GPU visibility, development toolchain presence, CUDA kernel execution, framework GPU use, and real workloads are separate validation stages. A minimal CUDA program is the next lower-layer test before investigating framework behavior.
 
 **Next step:** Compile and execute a tiny CUDA program in the GPU-enabled devel container, synchronize, and verify its result. Then validate PyTorch CUDA and NeMo. No raw logs or sensitive access details are included.
+
+## 2026-10-05 — Lab 01: PyTorch CUDA access validated
+
+Recorded the operator's sanitized milestone in [Lab 01, Part 4](docs/labs/01-brev-gpu-node-validation.md#part-4-pytorch-cuda-access-through-an-nvidia-ngc-container). This is the documentation sync date.
+
+| Area | Status | Reported evidence |
+| --- | --- | --- |
+| PyTorch container | Complete for startup and inspection | `nvcr.io/nvidia/pytorch:26.09-py3`; NVIDIA Release `26.09`; PyTorch `2.14.0a0+b2c75dd062.nv26.09` |
+| PyTorch CUDA availability | Complete | CUDA build `13.4`; `torch.cuda.is_available()` returned `True` |
+| GPU identity from PyTorch | Complete | `torch.cuda.get_device_name(0)` returned `NVIDIA L4` |
+| Interactive and one-liner workflows | Documented | Interactive checks performed; equivalent one-liner supplied for repeatable diagnostics, without claiming a separate run |
+| Actual GPU tensor computation / standalone CUDA kernel test | Not yet complete | No computed result reported |
+| Real training workload | Not yet complete | No training run reported |
+| NeMo | Not yet complete | No NeMo workload reported |
+| Distributed training / NCCL | Not yet complete | No collective or distributed run reported |
+| Performance benchmarking | Not yet complete | No performance measurements reported |
+
+**Compatibility observation:** The startup banner reported CUDA Forward Compatibility mode and CUDA 13.4 userspace compatibility components; the host kernel driver remained `595.91.07`. Container CUDA build and host compatibility reports are separate values. Successful availability/device queries do not establish support for every workload or feature.
+
+**Troubleshooting lesson:** Misspelling `torch.cuda.is_available()` as `torch.cuda.is_availble()` caused an `AttributeError`; the correct call succeeded. Inspect user/application errors before escalating toward infrastructure.
+
+**SA workflow:** Test the minimum needed to answer the customer's question in their real execution environment. Use host GPU query, container GPU query, PyTorch availability, real workload, and targeted deeper diagnostics as a troubleshooting ladder rather than a mandatory checklist.
+
+**Next decision:** Keep Lab 01 in progress until its completion scope is agreed. A small GPU tensor computation with synchronization and verified output is the recommended final functional check before Lab 02. No raw logs or sensitive connection details are included.
 
 ## Updating this log
 
