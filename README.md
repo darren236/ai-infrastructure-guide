@@ -1,65 +1,39 @@
 # AI Infrastructure Guide
 
-A hands-on guide to AI infrastructure and a technical portfolio covering compute, workload orchestration, distributed systems, and reliable operations. This repository will document reproducible guides, architecture decisions, operational lessons, and measured results as the work is completed.
+Practical AI infrastructure guides and a technical portfolio demonstrating NVIDIA Solutions Architect skills: GPU stack validation, containerized workloads, troubleshooting, and clear explanations of architecture and operational tradeoffs.
 
-The learning scope covers **GPU compute, containers, PyTorch/NeMo training, cloud infrastructure, Slurm, distributed communication, Kubernetes, observability, networking, storage, and troubleshooting**. Tool-specific guides will explore technologies such as CUDA, NCCL, and NVIDIA GPU Operator within that broader scope. The aim is to build practical experience designing and operating AI infrastructure and explain the tradeoffs clearly.
+## Start here
 
-## Current status
+| Guide | Focus | Current progress |
+| --- | --- | --- |
+| [01 — GPU Node Validation](docs/guides/01-brev-gpu-node-validation.md) | Brev access, Linux, NVIDIA drivers, CUDA containers, and PyTorch | Host and container GPU access, compiler inspection, and PyTorch CUDA availability validated. GPU computation remains pending. |
+| [02 — Nemotron Streaming ASR for Singapore English](docs/guides/02-nemotron-streaming-singapore-english.md) | A small NeMo speech adaptation POC/tutorial | NeMo 3.0.0, model loading on `cuda:0`, persistent cache, and NSC query/dev downloads validated. Preprocessing, inference, and training remain pending. |
 
-**Guide 01, Part 1 complete:** [Brev GPU Node Validation](docs/guides/01-brev-gpu-node-validation.md) documents cloud connectivity, Linux host identification, PCIe GPU visibility, and NVIDIA driver communication on an L4 node.
+**Current next step:** Create deterministic Guide 02 subsets of roughly **300 training / 50 dev utterances**. No completed baseline inference, fine-tuning, evaluation, or benchmark is claimed.
 
-**Guide 01:** [PyTorch CUDA access through an NVIDIA NGC container](docs/guides/01-brev-gpu-node-validation.md#part-4-pytorch-cuda-access-through-an-nvidia-ngc-container) documents PyTorch CUDA availability and NVIDIA L4 identity in the `26.09-py3` container, its reported forward-compatibility mode, and interactive/one-liner workflows.
-
-**Latest milestone — Guide 02:** [Adapting NVIDIA Nemotron 3.5 Streaming ASR to Singapore English](docs/guides/02-nemotron-streaming-singapore-english.md) records node preflight, NeMo 3.0.0 validation, model loading on `cuda:0`, persistent cache configuration, and NSC query/dev data downloads. Next: deterministic POC subsets of roughly 300 training and 50 dev utterances.
-
-Actual GPU inference/computation, baseline evaluation, preprocessing, real training, distributed training/NCCL, and performance benchmarking remain pending. No training runs, deployments, benchmarks, or complete end-to-end guide are claimed.
-
-Follow the planned milestones in [ROADMAP.md](ROADMAP.md) and the evidence-backed activity log in [PROGRESS.md](PROGRESS.md).
-
-## Learning objectives
-
-- Understand accelerator hardware, runtime and driver compatibility, resource usage, and failure modes.
-- Run reproducible containerized NeMo/PyTorch workloads on cloud GPUs.
-- Schedule compute jobs with Slurm and investigate distributed training and communication.
-- Operate GPU workloads on Kubernetes and explore device management and operators.
-- Evaluate observability, networking, and storage requirements, and document troubleshooting decisions.
+Browse the [guide index](docs/guides/README.md), check the [progress log](PROGRESS.md) for recorded milestones, or follow the [roadmap](ROADMAP.md) for future work.
 
 ## Repository layout
 
 ```text
 ai-infrastructure-guide/
-├── README.md
-├── ROADMAP.md
-├── PROGRESS.md
+├── README.md                 # Entry point and current status
+├── ROADMAP.md                # Planned learning sequence
+├── PROGRESS.md               # Dated milestones and evidence
 ├── .gitignore
-├── docs/             # Concepts, architecture notes, and operational guides
-│   └── guides/       # Numbered guides and evidence
-├── guides/           # Guide-specific code and configuration
-├── scripts/          # Reusable setup, inspection, and validation scripts
-├── containers/       # Container definitions and workload environments
-├── slurm/            # Scheduler configuration and job scripts
-├── kubernetes/       # Manifests and GPU platform configuration
-├── benchmarks/       # Benchmark methods and verified measurements
-└── diagrams/         # Architecture diagrams and editable sources
+├── docs/
+│   └── guides/
+│       ├── README.md         # Guide index
+│       ├── 01-brev-gpu-node-validation.md
+│       └── 02-nemotron-streaming-singapore-english.md
+└── guides/
+    └── README.md             # Placement of future runnable guide assets
 ```
 
-Empty directories contain `.gitkeep` placeholders so Git preserves the scaffold.
-
-## Continue the guide
-
-Start with [Guide 01: GPU Node Validation](docs/guides/01-brev-gpu-node-validation.md) for the environment inventory, connectivity recovery, host Toolkit discovery, and host/container architecture. Docker, NVIDIA container GPU access, and devel-image compiler inspection are documented in Part 3. PyTorch availability and device identity checks are documented in Part 4. Guide 01 remains in progress; a small GPU tensor computation with verified output is the recommended final functional check before closing Guide 01. Continue with [Guide 02](docs/guides/02-nemotron-streaming-singapore-english.md) for the Nemotron ASR POC; its next planned step is tiny deterministic training/dev subsets.
+Written instructions live in `docs/guides/`. Add code and configuration under `guides/` when a guide needs reusable files; directory conventions are explained [here](guides/README.md). Future work includes Slurm, NCCL, Kubernetes, NVIDIA GPU Operator, observability, networking, and storage. Create supporting directories when there is content to include.
 
 ## Documentation standard
 
-Each completed guide should record:
-
-1. The objective and architecture, including relevant tradeoffs.
-2. The actual hardware, software versions, configuration, and prerequisites.
-3. Reproduction steps and expected behavior.
-4. Observed results with supporting logs or measurements.
-5. Failures, troubleshooting steps, limitations, and lessons learned.
-6. Resource cleanup and costs, where available.
-
-Separate planned work from observed outcomes. Publish only reviewed, sanitized evidence; keep credentials, private data, datasets, checkpoints, and large generated artifacts out of Git.
+Each guide records its objective, actual environment, reproduction steps, observed results, troubleshooting lessons, and costs/cleanup where known. Distinguish completed checks from planned work and describe the limits of each result. Publish reviewed, sanitized evidence; keep credentials, datasets, model weights, raw terminal recordings, and generated outputs outside Git.
 
 This is an independent learning guide and portfolio.

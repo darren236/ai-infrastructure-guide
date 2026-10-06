@@ -158,6 +158,10 @@ The supplied dev split is reserved for a cleaner before/after comparison, separa
 
 Moved Guide 01 into `docs/guides/` alongside Guide 02 and renamed the empty code/configuration directory to `guides/`. Updated guide titles, terminology, local links, and the README directory tree throughout the repository. Aligned README and roadmap status with the latest Guide 02 milestone; completion boundaries and recorded results are unchanged.
 
+## 2026-10-06 — Repository navigation organized
+
+Added a guide index and navigation links in both guides, simplified the repository overview, and documented where future runnable guide assets should live. Removed empty placeholder directories; planned technologies remain in the roadmap and will receive directories when actual files are added. Recorded results and guide completion boundaries are unchanged.
+
 ## Updating this log
 
 For each meaningful milestone, add the actual date, objective, work performed, links to evidence, observed result, blockers or lessons, and next step. Distinguish work in progress from completed and validated work.

@@ -1,5 +1,7 @@
 # Guide 02 — Adapting NVIDIA Nemotron 3.5 Streaming ASR to Singapore English
 
+[All guides](README.md) · [Repository overview](../../README.md)
+
 ## Goal and scope
 
 Build a small proof of concept (POC) and tutorial for adapting streaming automatic speech recognition (ASR) to Singapore English. The goal is a manageable learning exercise, not production-quality tuning. Model loading, dataset preparation, training, and evaluation results will be documented only after they are performed.

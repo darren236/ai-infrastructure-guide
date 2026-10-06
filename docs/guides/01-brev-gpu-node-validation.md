@@ -1,5 +1,7 @@
 # Guide 01 — GPU Node Validation
 
+[All guides](README.md) · [Repository overview](../../README.md)
+
 ## Part 1: Brev connectivity, Linux host, PCIe, and NVIDIA driver
 
 **Status:** Parts 1–4 documented: host/driver validation, host Toolkit discovery, container GPU access, CUDA development toolchain inspection, and PyTorch CUDA availability/device identity checks complete. Actual GPU computation and real workloads remain unvalidated.

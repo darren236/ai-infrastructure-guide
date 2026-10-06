@@ -1,6 +1,8 @@
 # Learning Roadmap
 
-Milestone 01 is **in progress**: host access, Linux identification, PCIe visibility, driver communication, host Toolkit discovery, and host/container architecture are documented in [Guide 01](docs/guides/01-brev-gpu-node-validation.md). Docker, NVIDIA container GPU access, and devel-image compiler inspection are complete for the reported checks. PyTorch CUDA availability and GPU identity are validated in an NGC container; actual GPU computation and the Guide 01 completion decision remain pending. Guide 02 is also **in progress**: NeMo model loading on the L4 and NSC query/dev downloads are recorded in [the ASR guide](docs/guides/02-nemotron-streaming-singapore-english.md). Tiny subsets, preprocessing, baseline inference, training, and evaluation remain pending. Milestones 03–08 are planned; the sequence can be adjusted as the learning journey develops.
+Guides 01 and 02 are in progress; milestones 03–08 are planned. See the [guide index](docs/guides/README.md) for navigation and [progress log](PROGRESS.md) for dated results. The sequence can evolve with the learning journey.
+
+**Current next step:** Create deterministic Guide 02 subsets of approximately 300 training and 50 dev utterances. Preprocessing, baseline inference, training, and evaluation remain pending.
 
 | Milestone | Focus | Evidence to produce |
 | --- | --- | --- |
