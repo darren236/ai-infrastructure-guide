@@ -4,7 +4,7 @@
 
 - **Documentation:** [Guide 01](docs/guides/01-brev-gpu-node-validation.md) covers node validation, CUDA host/container architecture, Docker/NVIDIA integration, CUDA image inspection, and PyTorch CUDA access. [Guide 02](docs/guides/02-nemotron-streaming-singapore-english.md) documents preflight, model loading, NSC source downloads, and a four-stage experiment overview for a small Singapore English ASR POC. Single-file inference instructions remain unexecuted.
 - **Guide 02:** Preflight, NeMo 3.0.0 container checks, model loading, persistent cache configuration, model placement on `cuda:0`, and NSC query/dev downloads and extraction complete. Train/validation subsets, speaker/utterance-ID overlap verification, normalization, NeMo manifest conversion, baseline inference, training, checkpointing, evaluation, and true streaming remain incomplete.
-- **Guide 02 data roles:** `nsc_query_5h` is the train source; `nsc_dev_3h` is validation (dev), used for comparisons and development decisions without gradients. A final internal test and external benchmark are not selected. [Train → validation → test → external benchmark](docs/guides/02-nemotron-streaming-singapore-english.md#data-strategy-and-experiment-overview) is documented as the intended workflow, not completed execution.
+- **Guide 02 data roles:** `nsc_query_5h` is train and `nsc_dev_3h` is validation (dev), both from the NSC Part 6 train partition using different speaker sets. The plan now uses `nsc_test` from the official NSC test partition and `gigaspeech_test` for external/OOD evaluation. [Train → validation → freeze model/configuration → NSC test → GigaSpeech](docs/guides/02-nemotron-streaming-singapore-english.md#data-strategy-and-experiment-overview) remains planned execution; test/benchmark preparation and local overlap checks are unvalidated.
 - **Hands-on guides:** Guide 01 in progress; cloud connectivity, Linux host, PCIe GPU visibility, and NVIDIA driver communication validated. Host Toolkit discovery complete for the checked PATH and conventional locations; no installation found.
 - **Docker, NVIDIA container integration, container GPU passthrough, CUDA base image launch, and CUDA devel image / `nvcc` inspection:** Complete for the reported checks.
 - **PyTorch NGC container, CUDA availability, GPU identity, and interactive/one-liner workflows:** Validated or documented for the reported scope; interactive execution reported.
@@ -192,6 +192,12 @@ Recorded the known NSC source counts and approximate sizes while keeping ~300/~5
 Made the repository README the starting point, with a separate goal, full agenda, and status for each active guide: eight stack layers for Guide 01 and the 12-step ASR workflow for Guide 02. Reduced the directory index to guide links and reserved the roadmap for future topics.
 
 Removed the unused top-level `guides/` placeholder; written guides remain in `docs/guides/` at their existing paths. Moved Guide 02's agenda ahead of its detailed data strategy and placed the optional single-WAV smoke test in an appendix after the main progress section. Existing commands, results, and completion boundaries are preserved; ~300/50 subsets remain the next execution step.
+
+### 2026-10-07 — Guide 02 NSC test and GigaSpeech OOD plan confirmed
+
+Checked the [upstream dataset documentation](https://huggingface.co/datasets/pengyizhou/IALP-2026-data) and updated Guide 02/README agendas: query (~300 planned) → dev (~50 planned) → freeze configuration → `nsc_test` (3,684 utterances / ~7 h upstream) → `gigaspeech_test` (19,930 / 35.4 h upstream). Local query/dev counts remain 2,289/1,316; the POC subsets are not created.
+
+Documented that query/dev come from different speaker sets in the NSC train partition and are not subsets of one another. Upstream states query/dev/test are mutually speaker-disjoint and query/dev exclude all official-test speakers. Pairwise speaker/utterance-ID checks on the compute node remain a hands-on reproducibility step. Test/benchmark preparation, evaluation, and all pending training work remain unvalidated; no new downloads or GPU execution are claimed.
 
 ## Updating this log
 

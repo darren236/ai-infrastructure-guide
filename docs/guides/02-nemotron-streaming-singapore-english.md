@@ -12,20 +12,20 @@ Build a small proof of concept (POC) and tutorial for fine-tuning `nvidia/nemotr
 
 ## Guide 02 workflow agenda
 
-[Node preflight](#node-preflight--complete) and [NeMo/model loading](#nemo-container-and-model-on-gpu--complete) are recorded setup checks. Follow the application agenda below: source downloads and example inspection are complete, while subset creation and every later execution step remain pending.
+[Node preflight](#node-preflight--complete) and [NeMo/model loading](#nemo-container-and-model-on-gpu--complete) are recorded setup checks. Query/dev downloads and example inspection are complete; subset creation, test/benchmark preparation, and every later execution step remain pending.
 
 1. [Understand the four data roles](#data-strategy-and-experiment-overview): train, validation, test, external benchmark.
 2. [Inspect the available NSC data](#nsc-trainingquery-and-development-data--downloaded-and-extracted) — sources downloaded and example records inspected; full checks pending.
 3. [Create deterministic POC train/validation subsets](#next-create-tiny-deterministic-poc-subsets--planned) — approximately 300/50 utterances, not created.
-4. Verify speaker and utterance-ID separation before inference or training; revisit when selecting a test set.
+4. Verify speaker and utterance-ID separation on the compute node before inference or training; include NSC test when preparing it.
 5. Define transcript normalization, including treatment of annotation tags; freeze scoring rules for comparisons.
 6. Convert to NeMo manifests with audio paths valid inside the container.
 7. Run baseline inference on validation and record WER.
 8. Fine-tune on train only, starting with a training smoke test on the L4.
 9. Evaluate checkpoints/model choices on validation; record any development changes and compare under the same scoring rules.
-10. Finalize the model/configuration: checkpoint, normalization, and decoding settings.
-11. Select/verify and use a held-out test set for final internal evaluation — TBD.
-12. Optionally evaluate an external benchmark after the internal test — TBD.
+10. Freeze the model/configuration: checkpoint, normalization, and decoding settings.
+11. Verify and evaluate `nsc_test` for final held-out in-domain results — planned.
+12. Evaluate `gigaspeech_test` for external/OOD generalization and regressions after the NSC test — planned.
 
 Perform data preparation in the SSH-connected GPU host's working directory, outside Git. Download there and bind-mount host data into the container; a laptop path is not automatically available on the remote node. Record the source revision/checksum, fixed selection rule or seed, selected IDs, overlap-check results, normalization rules, container/model versions, and run settings. Keep validation IDs fixed; when scoring rules change during development, rescore both models consistently. These records remain to be produced.
 
@@ -33,49 +33,55 @@ This POC keeps the experiment small for learning. A customer deployment would ch
 
 ## Data strategy and experiment overview
 
-Follow four data roles: **train → validation → test → external benchmark**. Only the NSC query and dev sources have been downloaded and extracted. The approximately 300/50 POC subsets have **not** been created. In this guide, **validation** and **dev** mean the same role; the source directory remains `nsc_dev_3h`.
+The intended progression is **train → validation/development loop → freeze model/configuration → NSC held-out test → GigaSpeech external/OOD benchmark**. Only NSC query/dev downloads and extraction are reported; the approximately 300/50 POC subsets have **not** been created. Test and benchmark sources are now identified in the plan, with local preparation and evaluation still pending. **Validation** and **dev** mean the same role; the source directory remains `nsc_dev_3h`.
 
-| Stage | Current source | POC size | Purpose | Model learns from it? | When used | Status |
+| Stage | Planned source | POC / evaluation size | Purpose | Model learns from it? | When used | Status |
 | --- | --- | ---: | --- | --- | --- | --- |
 | Train | `nsc_query_5h` | ~300 utterances | Fine-tuning | Yes, directly through gradient updates | First learning stage | Source downloaded; subset not created |
 | Validation | `nsc_dev_3h` | ~50 utterances | Baseline comparison, tuning, checkpoint/model decisions | No gradients; influences development indirectly | Before and during fine-tuning development | Source downloaded; subset not created |
-| Test | TBD | TBD | Final held-out internal evaluation | No gradients or development tuning | After validation and development decisions are finalized | Not selected |
-| External benchmark | TBD | TBD | Independent generalization check | No gradients or routine tuning | After internal test evaluation | Not selected; optional later milestone |
+| Test | `nsc_test` | 3,684 utterances / ~7 h, upstream | Final held-out in-domain evaluation | No gradients or development tuning | After model/configuration is frozen | Planned; local preparation/evaluation pending |
+| External benchmark | `gigaspeech_test` | 19,930 utterances / 35.4 h, upstream | Out-of-domain (OOD) generalization/regression check | No gradients or routine tuning | After NSC test evaluation | Planned; local preparation/evaluation pending |
 
 ```text
-Training data
-     │
+Train: nsc_query_5h → ~300-utterance POC subset
      ↓
-Fine-tune model: learn weights through gradient updates
-     │
+Gradient updates
      ↓
-Validation data
-     ├── compare baseline vs fine-tuned model
-     ├── tune development choices
-     ├── choose checkpoint
-     └── finalize model/configuration
-     │
+Validation: nsc_dev_3h → ~50-utterance POC subset
      ↓
-Test data
-     └── final held-out internal evaluation
-     │
+Development loop: compare models, tune choices, select checkpoint
      ↓
-External benchmark
-     └── independent generalization check
+Freeze model and configuration
+     ↓
+NSC held-out test: nsc_test
+     ↓
+Final in-domain evaluation
+     ↓
+GigaSpeech external benchmark: gigaspeech_test
+     ↓
+OOD generalization/regression check
 ```
 
 Capture baseline **word error rate (WER)** on validation before the first fine-tuning run. Return to the same validation subset to compare checkpoints and development choices. Training and validation can repeat during development; final test evaluation comes after those decisions are settled.
 
 ### Available sources: origin and contents
 
-Both sources are NSC Part 6 extracts distributed through [pengyizhou/IALP-2026-data](https://huggingface.co/datasets/pengyizhou/IALP-2026-data). The intended experiment roles below are our POC choices; the source name `query` does not prevent us from using that subset for fine-tuning.
+The [upstream dataset documentation](https://huggingface.co/datasets/pengyizhou/IALP-2026-data) identifies the four sources below. Query/dev counts were recorded locally; test/benchmark sizes are upstream descriptions, not locally verified counts or completed evaluations.
 
-| Source | Full source size | Contents and intended use |
-| --- | --- | --- |
-| `nsc_query_5h` | 2,289 utterances; ~5 hours; ~214 MB, recorded as `214M` by `du -sh` | `.flac` audio and `manifest.jsonl`; source for ~300 training utterances |
-| `nsc_dev_3h` | 1,316 utterances; ~3 hours | `.flac` audio and `manifest.jsonl`; source for ~50 validation utterances; transcripts may contain `<v-noise>` |
+| Source | Origin | Full source size | Contents and intended use |
+| --- | --- | --- | --- |
+| `nsc_query_5h` | NSC IMDA Part 6 train partition | 2,289 utterances locally; ~5 h; ~214 MB, recorded as `214M` | FLAC audio and JSONL manifest; ~300 planned training utterances for gradient updates |
+| `nsc_dev_3h` | NSC IMDA Part 6 train partition | 1,316 utterances locally; ~3 h | FLAC audio and JSONL manifest; ~50 planned validation utterances for development/checkpoint decisions; tags such as `<v-noise>` |
+| `nsc_test` | Official NSC IMDA Part 6 test partition | 3,684 utterances / ~7 h, upstream | FLAC audio and JSONL manifest, per upstream; planned held-out in-domain evaluation |
+| `gigaspeech_test` | Separate GigaSpeech test corpus | 19,930 utterances / 35.4 h, upstream | WAV PCM_16 audio and JSONL manifest with normalized references, per upstream; planned external/OOD evaluation |
 
-Each JSONL line describes an utterance: `id` identifies it, `speaker` identifies the speaker, `duration` gives seconds, `text` is the reference transcript, and `audio` is a relative path into `audio/`. The download commands and example records are below. Hour totals are approximate source descriptions, not independently summed durations. The small subset sizes are planned counts, not measured subset hours or proof of production readiness.
+The downloaded query/dev JSONL records use `id`, `speaker`, `duration` (seconds), `text` (reference transcript), and `audio` (relative path into `audio/`). Their download commands and examples are below. Hour totals are source descriptions, not independently summed local durations; POC subset counts remain planned.
+
+### Split construction and hands-on verification
+
+`nsc_query_5h` and `nsc_dev_3h` both come from the NSC train partition, but **neither is a subset of the other**: query/dev speakers were sampled using different speaker sets. The [publisher's split-construction notes](https://huggingface.co/datasets/pengyizhou/IALP-2026-data#split-construction-nsc) state that query, dev, and `nsc_test` are mutually speaker-disjoint, and query/dev exclude every speaker appearing in the official NSC test partition.
+
+Keep the hands-on check: on the compute node, compare `speaker` and utterance `id` sets pairwise across query/dev/test, then verify the chosen POC subsets. Record intersections and source versions as an SA/reproducibility exercise. Upstream speaker-disjointness is a documented claim; our local speaker and utterance-ID checks remain pending.
 
 ### Direct learning versus development decisions
 
@@ -87,13 +93,13 @@ Test results are for evaluating the finalized internal result. If we repeatedly 
 
 - **Train:** Lower training loss shows better fit to training examples; it does not establish performance on unseen speech.
 - **Validation:** WER on the fixed ~50 utterances supports baseline comparisons and development decisions under recorded scoring rules. It is a small, development-influenced result, not an unbiased final estimate for all Singapore English.
-- **Test:** A properly separated, untouched set evaluates the finalized system on held-out internal data. Conclusions apply to that set's size and distribution; they do not establish production performance or generalization to every customer.
-- **External benchmark:** A separate source, corpus, or real-world target distribution checks whether improvements extend beyond the data used during development. Results support conclusions about that benchmark, not universal generalization. Keep it independent of the internal train/validation/test workflow and out of routine tuning.
+- **Test:** `nsc_test` evaluates the frozen system on held-out NSC in-domain speech. Conclusions apply to this test distribution; they do not establish production performance or generalization to every customer.
+- **External benchmark:** `gigaspeech_test` checks generalization and regressions on a separate corpus. Compare baseline and final-model results under fixed scoring rules, without routine tuning on this benchmark. Its results do not establish universal generalization.
 
-### Later data decisions — TODO
+### Evaluation preparation — TODO
 
-- **Final test:** No dedicated test set is selected or prepared. After validation choices are finalized, select and verify a suitable holdout with audio and reference transcripts, separated from POC train/validation speakers and utterance IDs. Record its source and size, then evaluate the fixed model/configuration without tuning on its results. If reserving data earlier, keep it untouched during development.
-- **External benchmark:** No benchmark is selected or prepared. Later, optionally choose independent audio and reference transcripts from a different source, corpus, or target distribution, document its scope, and evaluate after the internal test. Its source, size, and scoring rules remain TBD.
+- **NSC test:** Prepare `nsc_test` on the GPU host, verify local counts and overlap, and keep it out of the development loop. Evaluate only after the model, normalization, and decoding configuration are frozen.
+- **GigaSpeech OOD benchmark:** Prepare `gigaspeech_test` on the host and document local counts and scoring/reference normalization. Run the planned generalization/regression comparison after NSC test evaluation. Preparation and both evaluations remain unvalidated.
 
 ## Node preflight — complete
 
@@ -218,13 +224,13 @@ The inspected train/validation records share the fields `id`, `speaker`, `durati
 
 ### Why keep development data separate?
 
-Evaluate development choices on utterances and speakers not used for gradient updates. Reserve the supplied dev split for validation, baseline/fine-tuned WER comparison, and checkpoint selection; use the query split for fine-tuning. The [dataset publisher](https://huggingface.co/datasets/pengyizhou/IALP-2026-data#split-construction-nsc) describes the NSC splits as speaker-disjoint. Local speaker and utterance-ID overlap checks remain pending; the two example records alone do not verify that property. Validation influences development choices, so it does not replace the later final test.
+Use query for gradient updates and dev for validation WER, development choices, and checkpoint selection. They share the NSC train partition but use different speaker sets; neither is a subset of the other. Verify separation locally as described above. Validation influences development, so it does not replace the final `nsc_test` evaluation.
 
 ## Next: create tiny deterministic POC subsets — planned
 
 The next execution step is to select roughly **300 training utterances** from the query split and **50 validation utterances** from the separate dev split, using a fixed selection rule or seed so the experiment can be reproduced. Record selected IDs, then verify speaker and utterance-ID separation before using the subsets. This step has not been executed.
 
-Tiny subset creation, overlap verification, transcript normalization, NeMo manifest conversion, baseline inference, the training smoke test, fine-tuning, checkpointing, and evaluation all remain incomplete. Final test and external benchmark selection remain TODOs. Follow the workflow agenda above; the aim remains a small POC/tutorial, not production optimization.
+Tiny subset creation, overlap verification, transcript normalization, NeMo manifest conversion, baseline inference, the training smoke test, fine-tuning, checkpointing, and evaluation all remain incomplete. NSC test and GigaSpeech sources are identified in the plan; their local preparation and evaluation remain pending. Follow the workflow agenda above; the aim remains a small POC/tutorial, not production optimization.
 
 ## Completion boundaries and next step
 
@@ -251,12 +257,12 @@ Tiny subset creation, overlap verification, transcript normalization, NeMo manif
 | Checkpointing | Not yet complete |
 | Checkpoint/model comparison on validation | Not yet complete |
 | Final model/configuration | Not yet finalized |
-| Final held-out internal test | Not selected; evaluation pending after development choices are finalized |
-| External benchmark | Not selected; optional later milestone after internal test |
+| NSC held-out test (`nsc_test`) | Planned; local preparation/verification and evaluation pending after configuration freeze |
+| GigaSpeech external/OOD benchmark (`gigaspeech_test`) | Planned; local preparation/verification and evaluation pending after NSC test |
 | Performance benchmarking | Not yet complete |
 | True streaming inference | Not yet complete |
 
-Next, create the tiny deterministic train/validation subsets, then verify separation, define normalization, and convert manifests before baseline inference on validation. The four data roles organize later fine-tuning, model selection, internal test, and optional external evaluation; no final test or benchmark is selected. The eventual infrastructure progression remains simple Docker validation → actual Nemotron inference → streaming inference → package the workload cleanly → submit the equivalent workload through SLURM. Streaming and scheduler work remain future milestones.
+Next, create the tiny deterministic train/validation subsets, verify separation, define normalization, and convert manifests before baseline validation inference. Later: train → validation/development loop → freeze model/configuration → `nsc_test` → `gigaspeech_test`. Both evaluations remain planned. The infrastructure progression remains Docker validation → actual Nemotron inference → streaming inference → package the workload → SLURM; streaming and scheduler work remain future milestones.
 
 <a id="single-file-inference-reference--not-yet-executed"></a>
 

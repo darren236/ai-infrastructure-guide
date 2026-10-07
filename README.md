@@ -30,22 +30,22 @@ Start with **Guide 01** to understand and validate the GPU stack, then follow **
 
 [Open Guide 02](docs/guides/02-nemotron-streaming-singapore-english.md)
 
-**Goal:** Fine-tune `nvidia/nemotron-3.5-asr-streaming-0.6b` on NSC Part 6 using the NVIDIA L4 Brev instance. This is a small POC/tutorial. Its data strategy is **train → validation → final internal test → optional external benchmark**.
+**Goal:** Fine-tune `nvidia/nemotron-3.5-asr-streaming-0.6b` on NSC Part 6 using the NVIDIA L4 Brev instance. This small POC follows **train → validation/development loop → freeze model/configuration → NSC held-out test → GigaSpeech external/OOD benchmark**.
 
 1. [Understand the four data roles](docs/guides/02-nemotron-streaming-singapore-english.md#data-strategy-and-experiment-overview) — train, validation, test, external benchmark.
 2. [Inspect the available NSC data](docs/guides/02-nemotron-streaming-singapore-english.md#nsc-trainingquery-and-development-data--downloaded-and-extracted).
 3. [Create deterministic POC train/validation subsets](docs/guides/02-nemotron-streaming-singapore-english.md#next-create-tiny-deterministic-poc-subsets--planned) — approximately 300/50 utterances.
-4. Verify speaker and utterance-ID separation.
+4. Verify speaker and utterance-ID separation on the compute node, including NSC test when preparing it.
 5. Define transcript normalization, including annotation-tag handling.
 6. Convert to NeMo manifests with container-visible audio paths.
 7. Run baseline inference on validation and record WER.
 8. Fine-tune on train only, starting with a training smoke test.
 9. Evaluate checkpoints/model choices on validation.
-10. Finalize the model/configuration, normalization, and decoding settings.
-11. Select/verify and use a held-out test set after development decisions are settled.
-12. Optionally evaluate an independent external benchmark after the internal test.
+10. Freeze the model/configuration, normalization, and decoding settings.
+11. Verify and evaluate `nsc_test` for final held-out in-domain results.
+12. Evaluate `gigaspeech_test` for external/OOD generalization and regressions after the NSC test.
 
-**Status:** Node preflight, NeMo 3.0.0/model loading on `cuda:0`, cache configuration, and NSC query/dev downloads are complete. Only example source records have been inspected; full data checks and steps 3–12 remain pending. Test and external benchmark sources are not selected.
+**Status:** Node preflight, NeMo 3.0.0/model loading on `cuda:0`, cache configuration, and NSC query/dev downloads are complete. Full data checks and steps 3–12 remain pending. NSC test and GigaSpeech sources are identified in the plan; their local preparation and evaluation are not yet validated.
 
 **Current next step:** Create the approximately **300 training / 50 validation (dev) utterance** subsets. The optional one-WAV smoke test is documented in Guide 02's appendix and remains unexecuted.
 
