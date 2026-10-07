@@ -13,7 +13,15 @@
 - **Actual GPU inference/computation, real training, NeMo training, distributed training/NCCL, and performance benchmarking:** Not yet complete.
 - **Training runs, application deployments, and benchmarks:** None documented.
 
-**Current next step:** Normalize the derived Guide 02 transcripts: remove `<v-noise>`/`<noise>` tokens while preserving spoken words, Singlish/local speech, and fillers. Write separate outputs, then convert NeMo manifests and run baseline validation WER. Normalization and downstream steps remain pending; byte-for-byte artifact testing is not a required POC step.
+### Guide 02 end-of-day checkpoint
+
+**Current checkpoint:** POC train/validation subsets have been created and independently validated. Train: 300 records / 111 speakers / ~0.66 h; validation: 50 / 50 / ~0.11 h. Both have zero `<unk>`, with zero shared speakers or IDs. POC subset preparation is complete; normalization and NeMo conversion are not.
+
+**Pipeline:** The [checked overview](docs/guides/02-nemotron-streaming-singapore-english.md#current-pipeline-status) places transcript normalization immediately after derived-subset validation. Baseline inference, baseline validation WER, training smoke test, fine-tuning, validation/model selection, and checkpoint/configuration freeze remain pending. `nsc_test` and `gigaspeech_test` have no documented local download or evaluation; both evaluations are not started.
+
+**Next session:** Define and implement normalization for `<v-noise>`/`<noise>` while preserving spoken words, identifiable Singapore-English/Singlish speech, and fillers. Create new derived artifacts separately or reproducibly during NeMo conversion; original manifests remain unchanged. Then convert to NeMo ASR manifests.
+
+**Reproducibility scope:** Seed 42 and deterministic speaker-aware sampling are already recorded. SHA-256 hashing/byte-for-byte regeneration is optional additional rigor for stricter production pipelines, deliberately not a required tutorial blocker.
 
 ## Milestone history
 
@@ -250,6 +258,12 @@ Recorded the operator's completed [subset checks](docs/guides/02-nemotron-stream
 **Operational lessons:** The earlier arbitrary-UID failure was handled with the image's default execution context, protected mounts, and explicit derived-file ownership correction. Unexpected tag output from the node's overwritten overlap script prompted artifact inspection, local preservation as `check_split_overlap.py.bad`, restoration of the known-good helper, and rerunning validation. The incorrect copy is not committed.
 
 **Next:** Normalize only the noise annotation tokens in separate derived outputs, preserving actual words and local speech; then convert NeMo manifests. Normalization, conversion, baseline inference, training, checkpointing, WER evaluation, NSC test, and GigaSpeech evaluation remain pending. Byte-for-byte reproduction testing is not a required tutorial gate. Manual audio review/relabeling remains future work outside this POC.
+
+### 2026-10-07 — Guide 02 end-of-day checkpoint synchronized
+
+Aligned the guide's pipeline, four-stage status table, README handoff, and current-state log with the existing validation evidence. Source-format train/validation subset preparation is complete; normalization is the exact next task, followed by NeMo conversion, baseline inference/WER, and training. NSC test and GigaSpeech evaluation remain unstarted, without documented local downloads.
+
+Recorded a clear stopping point and next-session handoff. Seed 42/deterministic sampling remains the POC reproducibility design; hashing or byte-for-byte regeneration is optional production rigor. Existing ownership, count, tag, and separation results are retained. This is a status/documentation update, with no new scripts, normalized artifacts, dataset downloads, or GPU execution claimed.
 
 ## Updating this log
 

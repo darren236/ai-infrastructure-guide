@@ -14,6 +14,46 @@ Build a small proof of concept (POC) and tutorial for fine-tuning `nvidia/nemotr
 
 [Node preflight](#node-preflight--complete) and [NeMo/model loading](#nemo-container-and-model-on-gpu--complete) are recorded setup checks. Source inspection, train/validation separation, annotation enumeration, eligibility analysis, the POC annotation policy, subset generation, and [independent subset checks](#derived-poc-subset-validation--complete) are complete. The 300 train / 50 validation records have no `<unk>` tags or shared speakers/IDs. Referenced-audio integrity, NSC test checks, and steps 5–12 remain pending.
 
+### Current pipeline status
+
+Checkmarks refer to the reported checks, including GPU visibility/framework access and model placement, rather than completed inference or training. Every stage after the current checkpoint remains unexecuted.
+
+```text
+GPU / container infrastructure ✅
+        ↓
+Nemotron model load on L4 ✅
+        ↓
+NSC source data download ✅
+        ↓
+Source-data inspection ✅
+        ↓
+Train / validation speaker and ID separation ✅
+        ↓
+Transcript-tag audit and eligibility analysis ✅
+        ↓
+POC data policy ✅
+        ↓
+Deterministic speaker-aware subsets ✅
+        ↓
+Independent derived-subset validation ✅  ← CURRENT CHECKPOINT
+        ↓
+Transcript normalization                 ← NEXT
+        ↓
+NeMo manifest conversion
+        ↓
+Baseline inference → baseline validation WER
+        ↓
+Training smoke test → fine-tune on train
+        ↓
+Validation / development loop
+        ↓
+Freeze checkpoint + configuration
+        ↓
+NSC held-out test → GigaSpeech external/OOD benchmark
+```
+
+### Hands-on agenda
+
 1. [Verify source manifests on the node](#split-construction-and-hands-on-verification) — counts checked; referenced-audio integrity not yet reported.
 2. [Verify speaker and utterance-ID separation](#split-construction-and-hands-on-verification) — complete for train/validation; NSC test checks pending.
 3. [Inspect and count transcript annotation tokens](#transcript-annotation-audit--complete) and [measure POC eligibility](#poc-eligibility-impact--complete) — complete; annotation policy decided.
@@ -35,12 +75,14 @@ This POC keeps the experiment small for learning. A customer deployment would ch
 
 The intended progression is **train → validation/development loop → freeze model/configuration → NSC held-out test → GigaSpeech external/OOD benchmark**. NSC query/dev sources are downloaded and audited; **300/50 POC subsets have been generated and independently checked** for ownership, record counts, tags, speakers, and separation. Test and benchmark sources are identified in the plan, with local preparation and evaluation still pending. **Validation** and **dev** mean the same role; the source directory remains `nsc_dev_3h`.
 
-| Stage | Planned source | POC / evaluation size | Purpose | Model learns from it? | When used | Status |
+| Stage | Source → derived POC data | POC / evaluation size | Purpose | Model learns from it? | When used | Status |
 | --- | --- | ---: | --- | --- | --- | --- |
-| Train | `nsc_query_5h` | 300 utterances, independently checked | Fine-tuning | Yes, directly through gradient updates | First learning stage | Subset checks complete; normalization pending |
-| Validation | `nsc_dev_3h` | 50 utterances, independently checked | Baseline comparison, tuning, checkpoint/model decisions | No gradients; influences development indirectly | Before and during fine-tuning development | Subset checks complete; normalization pending |
-| Test | `nsc_test` | 3,684 utterances / ~7 h, upstream | Final held-out Singapore-English evaluation | No gradients or development tuning | After model/configuration is frozen | Planned; local preparation/evaluation pending |
-| External benchmark | `gigaspeech_test` | 19,930 utterances / 35.4 h, upstream | Out-of-domain (OOD) generalization/regression check | No gradients or routine tuning | After NSC test evaluation | Planned; local preparation/evaluation pending |
+| Train | `nsc_query_5h` → `poc/train_300.jsonl` | 300 utterances, independently checked | Fine-tuning | Yes, directly through gradient updates | First learning stage | ✅ POC subset preparation complete; normalization/NeMo conversion pending |
+| Validation | `nsc_dev_3h` → `poc/dev_50.jsonl` | 50 utterances, independently checked | Baseline comparison, tuning, checkpoint/model decisions | No gradients; influences development indirectly | Before and during fine-tuning development | ✅ POC subset preparation complete; normalization/NeMo conversion pending |
+| Test | `nsc_test` | 3,684 utterances / ~7 h, upstream | Final held-out Singapore-English evaluation | No gradients or development tuning | After model/configuration is frozen | Not started; no local download or evaluation documented |
+| External benchmark | `gigaspeech_test` | 19,930 utterances / 35.4 h, upstream | Out-of-domain (OOD) generalization/regression check | No gradients or routine tuning | After NSC test evaluation | Not started; no local download or evaluation documented |
+
+Preparation complete here means **source-format subsets created and independently checked**. Normalized transcripts, NeMo manifests, model weight updates, and validation WER remain pending. The progression below describes the intended experiment, not completed model execution.
 
 ```text
 Train: nsc_query_5h → 300-utterance POC subset
@@ -556,6 +598,15 @@ ID overlap:      0
 
 All 111 eligible train speakers are represented; validation contains 50 distinct speakers. The POC manifests share no speakers or utterance IDs. Both helpers use the pinned NeMo image with data/tooling mounted read-only and no GPU request; the commands above are reproduction examples. Source and derived checks remain separate evidence.
 
+### Current verified POC datasets
+
+| Role | Manifest on the Brev host | Utterances | Speakers | Duration | `<unk>` |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Train | `/home/ubuntu/data/nsc/poc/train_300.jsonl` | 300 | 111 | ~0.66 h | 0 |
+| Validation | `/home/ubuntu/data/nsc/poc/dev_50.jsonl` | 50 | 50 | ~0.11 h | 0 |
+
+Speaker overlap: **0**. Utterance-ID overlap: **0**. These host paths are mapped to container paths by the bind mounts above; they are not laptop paths. Noise annotation tokens remain present until normalization.
+
 ## Troubleshooting notes
 
 ### Troubleshooting: arbitrary container UID
@@ -586,9 +637,11 @@ During node validation, `check_split_overlap.py` was accidentally overwritten wi
 
 ## Next: transcript normalization — planned
 
-Remove only `<v-noise>` and `<noise>` annotation tokens from the derived transcripts while preserving actual words, Singlish/local speech (`lah`, `wah`, `ya`, `mm`), and fillers. Write separate normalized outputs and record the policy consistently for train/validation; preserve the original source manifests and the generated subset files. Normalization has not been performed.
+Define and implement removal of `<v-noise>` and `<noise>` annotation tokens from the derived transcripts while preserving actual words, identifiable Singapore-English/Singlish speech (`lah`, `wah`, `ya`, `mm`), and fillers. Record and apply the policy consistently for train/validation. Create new derived artifacts, either as separate normalized manifests or reproducibly within NeMo conversion; preserve the original source manifests and generated subset files. Normalization has not been performed.
 
-After normalization, convert derived data to NeMo manifests with container-valid audio paths, then run baseline validation inference. Conversion, baseline inference, fine-tuning, checkpointing, validation WER, `nsc_test`, and `gigaspeech_test` remain pending. Fixed sources, sampling settings, and seed support reproducible selection; byte-for-byte artifact testing is not a required POC step.
+After normalization: **NeMo manifest conversion → baseline inference → baseline validation WER → training smoke test → fine-tuning**. Use container-valid audio paths when converting. All these steps, checkpointing, and test/external evaluation remain pending.
+
+Fixed seed **42** and separate deterministic RNG streams are already part of the sampling design. SHA-256 artifact hashing and byte-for-byte regeneration testing can add rigor in stricter production data pipelines; they are intentionally not required blockers for this tutorial POC.
 
 ## Completion boundaries and next step
 
@@ -626,13 +679,19 @@ After normalization, convert derived data to NeMo manifests with container-valid
 | Checkpointing | Not yet complete |
 | Checkpoint/model comparison on validation | Not yet complete |
 | Final model/configuration | Not yet finalized |
-| NSC held-out test (`nsc_test`) | Planned; local preparation/verification and evaluation pending after configuration freeze |
-| GigaSpeech external/OOD benchmark (`gigaspeech_test`) | Planned; local preparation/verification and evaluation pending after NSC test |
+| NSC held-out test (`nsc_test`) | Not started; no local download/evaluation documented; prepare/verify and evaluate after configuration freeze |
+| GigaSpeech external/OOD benchmark (`gigaspeech_test`) | Not started; no local download/evaluation documented; prepare/verify and evaluate after NSC test |
 | Performance benchmarking | Not yet complete |
 | True streaming inference | Not yet complete |
 | Manual annotation/audio review | Future work; excluded from this POC |
 
-Next, normalize derived transcripts, then convert NeMo manifests. Later: baseline validation → train → validation/development loop → freeze model/configuration → `nsc_test` → `gigaspeech_test`. Both evaluations remain planned. The infrastructure progression remains Docker validation → actual Nemotron inference → streaming inference → package the workload → SLURM; streaming and scheduler work remain future milestones.
+### End-of-day checkpoint
+
+**Current checkpoint:** POC train/validation subsets have been created and independently validated for ownership, counts, tags, speakers, and separation. This is the stopping point recorded in the 2026-10-07 documentation sync; no normalization or model execution result is added.
+
+**Next session:** Define and implement transcript normalization for `<v-noise>` and `<noise>`, preserving spoken words and original manifests, then convert the derived POC data into NeMo ASR manifests.
+
+Later: baseline inference → baseline validation WER → training smoke test → fine-tune on train → validation/development loop → freeze checkpoint/configuration → `nsc_test` → `gigaspeech_test`. Both evaluations remain unstarted. The infrastructure progression remains Docker validation → actual Nemotron inference → streaming inference → package the workload → SLURM; streaming and scheduler work remain future milestones.
 
 <a id="single-file-inference-reference--not-yet-executed"></a>
 

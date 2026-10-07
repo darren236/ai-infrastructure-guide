@@ -47,7 +47,9 @@ Start with **Guide 01** to understand and validate the GPU stack, then follow **
 
 **Status:** Preflight, NeMo/model loading, source inspection/separation, annotation auditing, eligibility analysis, the POC policy, subset generation, and independent subset checks are complete. The POC has **300 train utterances / 111 speakers / ~0.66 h** and **50 validation utterances / 50 speakers / ~0.11 h**, selected using seed 42. Ownership was corrected for the derived files; neither subset contains `<unk>`, and they share no speakers or IDs. Normalized output and steps 6–12 remain pending. NSC test/GigaSpeech preparation and evaluation are unvalidated.
 
-**Current next step:** [Normalize derived transcripts](docs/guides/02-nemotron-streaming-singapore-english.md#next-transcript-normalization--planned), then convert NeMo manifests. Remove `<v-noise>`/`<noise>` tokens while preserving spoken words, local speech, and fillers. Preserve originals; manual relabeling is excluded from this POC. The optional one-WAV test remains unexecuted.
+**Current checkpoint:** POC train/validation subsets have been created and independently validated. See the [checked pipeline](docs/guides/02-nemotron-streaming-singapore-english.md#current-pipeline-status) and [end-of-day handoff](docs/guides/02-nemotron-streaming-singapore-english.md#end-of-day-checkpoint). NSC test and GigaSpeech downloads/evaluations are not documented; both evaluations are unstarted.
+
+**Next session:** Define and implement [transcript normalization](docs/guides/02-nemotron-streaming-singapore-english.md#next-transcript-normalization--planned), then convert NeMo manifests. Remove `<v-noise>`/`<noise>` tokens while preserving spoken words, local speech, and fillers. Preserve originals; manual relabeling is excluded from this POC. The optional one-WAV test remains unexecuted.
 
 ## Future guides
 
