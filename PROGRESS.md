@@ -3,17 +3,17 @@
 ## Current state
 
 - **Documentation:** [Guide 01](docs/guides/01-brev-gpu-node-validation.md) covers node validation, CUDA host/container architecture, Docker/NVIDIA integration, CUDA image inspection, and PyTorch CUDA access. [Guide 02](docs/guides/02-nemotron-streaming-singapore-english.md) documents preflight, model loading, NSC source downloads, and a four-stage experiment overview for a small Singapore English ASR POC. Single-file inference instructions remain unexecuted.
-- **Guide 02:** Preflight, NeMo 3.0.0 container checks, model loading, persistent cache configuration, model placement on `cuda:0`, NSC query/dev downloads, source counts, train/validation speaker/utterance-ID separation, annotation inventory/counts, `<unk>` eligibility analysis, and POC annotation-handling decision complete. Referenced-audio integrity, train/validation subsets, normalization output, NeMo manifest conversion, baseline inference, training, checkpointing, evaluation, and true streaming remain incomplete.
+- **Guide 02:** Preflight, NeMo 3.0.0 container checks, model loading/cache/GPU placement, source inspection, train/validation speaker/utterance-ID separation, tag enumeration, eligibility analysis, the POC policy, and deterministic speaker-aware subset generation complete. `train_300.jsonl` and `dev_50.jsonl` were created. Independent derived-subset validation, referenced-audio integrity, normalization output, NeMo conversion, inference, training, checkpointing, evaluation, and true streaming remain incomplete.
 - **Guide 02 data roles:** `nsc_query_5h` is train and `nsc_dev_3h` is validation (dev), both from the NSC Part 6 train partition. Local checks found 111/64 speakers, zero shared speakers, and zero shared utterance IDs. [Train → validation → freeze model/configuration → NSC test → GigaSpeech](docs/guides/02-nemotron-streaming-singapore-english.md#data-strategy-and-experiment-overview) remains planned execution; test/benchmark preparation and separation from `nsc_test` remain unvalidated.
-- **Guide 02 annotations:** Both complete manifests were audited for `<v-noise>`, `<unk>`, and `<noise>`; 511 train and 286 validation records contain tags. The POC decision excludes whole `<unk>` utterances, keeps noise-tagged utterances for later token removal, and preserves local speech. Manual listening/relabeling is excluded; original manifests remain unchanged. Policy application and audio-based data-quality review remain future work.
-- **Guide 02 eligibility:** Read-only analysis found 131/91 records containing `<unk>`. Excluding them would leave 2,158 train records / 4.59 h and 1,225 validation records / 2.71 h, enough for the planned ~300/~50 subsets. These are estimated eligible pools; no filtered dataset or subset has been created.
+- **Guide 02 annotations:** Source audits found `<v-noise>`, `<unk>`, and `<noise>`; 511 train and 286 validation records contain tags. The generator excludes whole `<unk>` utterances; independent absence checks are pending. Noise-tag removal and transcript normalization remain pending, with local speech retained. Manual listening/relabeling is excluded; source manifests remain unchanged.
+- **Guide 02 subsets:** Eligible pools were 2,158 train / 4.59 h and 1,225 validation / 2.71 h. Seed-42 generation reported 300 train / 111 speakers / 0.66 h and 50 validation / 50 speakers / 0.11 h. Output ownership, independent counts, `<unk>` absence, speaker counts, and deterministic reproduction remain to be verified on the node.
 - **Hands-on guides:** Guide 01 in progress; cloud connectivity, Linux host, PCIe GPU visibility, and NVIDIA driver communication validated. Host Toolkit discovery complete for the checked PATH and conventional locations; no installation found.
 - **Docker, NVIDIA container integration, container GPU passthrough, CUDA base image launch, and CUDA devel image / `nvcc` inspection:** Complete for the reported checks.
 - **PyTorch NGC container, CUDA availability, GPU identity, and interactive/one-liner workflows:** Validated or documented for the reported scope; interactive execution reported.
 - **Actual GPU inference/computation, real training, NeMo training, distributed training/NCCL, and performance benchmarking:** Not yet complete.
 - **Training runs, application deployments, and benchmarks:** None documented.
 
-**Current next step:** Create deterministic Guide 02 **~300 train / ~50 validation** subsets from eligible utterances and recheck their separation. Then finish normalization and apply the annotation policy to derived data, convert NeMo manifests, and run baseline validation WER. These steps remain pending.
+**Current next step:** Independently validate the derived Guide 02 subsets: ownership, `wc -l` counts, `<unk>` absence, speaker counts, and deterministic reproduction. Then normalize derived transcripts, convert NeMo manifests, and run baseline validation WER. These checks and downstream steps remain pending.
 
 ## Milestone history
 
@@ -228,6 +228,16 @@ Added the supplied [`check_poc_eligibility.py`](scripts/guide-02/check_poc_eligi
 Observed train: 2,289 records / 5.01 h, with 131 `<unk>` records / 0.42 h; 2,158 / 4.59 h would remain. Validation: 1,316 / 3.02 h, with 91 `<unk>` records / 0.31 h; 1,225 / 2.71 h would remain. Hours sum manifest durations; the read-only check creates no filtered output.
 
 Marked overlap verification, annotation enumeration, eligibility analysis, and the POC handling decision complete. The policy excludes whole `<unk>` utterances, keeps `<noise>`/`<v-noise>` utterances for later token removal, retains local speech, and preserves originals. This is a pragmatic POC choice, not a bad-data judgment; manual audio review remains future work. Subsets, normalized output, NeMo conversion, baseline inference, training, checkpointing, and test/external evaluation remain pending.
+
+### 2026-10-07 — Guide 02 deterministic speaker-aware subsets generated
+
+Added the supplied, node-run [`create_poc_subsets.py`](scripts/guide-02/create_poc_subsets.py) unchanged. After excluding `<unk>`, the eligible pools were 2,158 train / 4.59 h and 1,225 validation / 2.71 h. The POC chooses 300/50 for fast NVIDIA L4 validation, with speaker cycling for train, one utterance per validation speaker, and separate RNG streams (`seed = 42`, validation `seed + 1`).
+
+The operator created `~/data/nsc/poc` and successfully ran the pinned NeMo container with source/tooling mounted read-only and the dedicated derived directory writable at `/output`. The generator reported `train_300.jsonl`: 300 records, 111 speakers, 0.66 h; `dev_50.jsonl`: 50 records, 50 speakers, 0.11 h. Source manifests remain unchanged; generated records are not yet normalized or converted to NeMo format.
+
+Recorded the arbitrary-host-UID failures (`python3: not found`, then `/opt/venv/bin/python3: Permission denied`). The successful command uses the image's default context; ownership inspection and any needed correction remain pending.
+
+Subset generation and file creation are complete, while independent ownership, line-count, `<unk>` absence, speaker-count, and reproduction checks remain TODOs. Normalization, NeMo conversion, baseline inference, fine-tuning, checkpointing, validation WER, NSC test, and GigaSpeech evaluation remain pending.
 
 ## Updating this log
 

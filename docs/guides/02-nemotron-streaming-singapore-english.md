@@ -12,12 +12,12 @@ Build a small proof of concept (POC) and tutorial for fine-tuning `nvidia/nemotr
 
 ## Guide 02 workflow agenda
 
-[Node preflight](#node-preflight--complete) and [NeMo/model loading](#nemo-container-and-model-on-gpu--complete) are recorded setup checks. Query/dev downloads, manifest counts, train/validation separation, annotation enumeration, `<unk>` eligibility analysis, and the POC annotation-handling decision are complete. The [four data roles](#data-strategy-and-experiment-overview) explain the experiment; referenced-audio integrity, NSC test overlap checks, and the derived-data/inference/training work in steps 4–12 remain pending.
+[Node preflight](#node-preflight--complete) and [NeMo/model loading](#nemo-container-and-model-on-gpu--complete) are recorded setup checks. Source inspection, train/validation separation, annotation enumeration, eligibility analysis, the POC annotation policy, and subset generation are complete. The generator reported 300 train / 50 validation utterances; [independent output validation](#next-validate-derived-subsets--pending), referenced-audio integrity, NSC test checks, and steps 5–12 remain pending.
 
 1. [Verify source manifests on the node](#split-construction-and-hands-on-verification) — counts checked; referenced-audio integrity not yet reported.
 2. [Verify speaker and utterance-ID separation](#split-construction-and-hands-on-verification) — complete for train/validation; NSC test checks pending.
 3. [Inspect and count transcript annotation tokens](#transcript-annotation-audit--complete) and [measure POC eligibility](#poc-eligibility-impact--complete) — complete; annotation policy decided.
-4. [Create deterministic POC train/validation subsets](#next-data-preparation-on-the-compute-node--planned) — approximately 300/50 utterances from eligible pools, not created.
+4. [Create deterministic speaker-aware POC subsets](#deterministic-poc-subset-generation--complete) — 300/50 generated; independent validation pending.
 5. Finalize remaining normalization rules and apply the chosen annotation policy reproducibly to derived data.
 6. Convert derived data to NeMo manifests with audio paths valid inside the container.
 7. Run baseline inference on validation and record WER.
@@ -27,27 +27,27 @@ Build a small proof of concept (POC) and tutorial for fine-tuning `nvidia/nemotr
 11. Evaluate `nsc_test` for final held-out Singapore-English results — planned.
 12. Evaluate `gigaspeech_test` for external/OOD generalization and regressions after the NSC test — planned.
 
-Perform data preparation in the SSH-connected GPU host's working directory, outside Git. Download there and bind-mount host data into the container; a laptop path is not automatically available on the remote node. Record the source revision/checksum, fixed selection rule or seed, selected IDs, overlap-check results, normalization rules, container/model versions, and run settings. Keep validation IDs fixed; when scoring rules change during development, rescore both models consistently. Audit results and the POC annotation policy are recorded below; source checksums, subset IDs, remaining normalization rules, and training run settings remain to be recorded.
+Perform data preparation in the SSH-connected GPU host's working directory, outside Git. Download there and bind-mount host data into the container; a laptop path is not automatically available on the remote node. Record source revisions/checksums, the selection rule and seed, selected IDs, overlap results, normalization rules, container/model versions, and run settings. Keep validation IDs fixed; when scoring rules change during development, rescore both models consistently. The seed and generation report are recorded below; source checksums, independent subset checks, remaining normalization rules, and training settings remain pending.
 
 This POC keeps the experiment small for learning. A customer deployment would choose data coverage and evaluation sizes around actual users, audio conditions, and acceptance criteria; ~300/50 utterances are not a production recommendation. WER checks recognition quality, while streaming behavior, latency, throughput, and scheduler integration remain separate future work.
 
 ## Data strategy and experiment overview
 
-The intended progression is **train → validation/development loop → freeze model/configuration → NSC held-out test → GigaSpeech external/OOD benchmark**. NSC query/dev sources are downloaded and audited; the approximately 300/50 POC subsets have **not** been created. Test and benchmark sources are identified in the plan, with local preparation and evaluation still pending. **Validation** and **dev** mean the same role; the source directory remains `nsc_dev_3h`.
+The intended progression is **train → validation/development loop → freeze model/configuration → NSC held-out test → GigaSpeech external/OOD benchmark**. NSC query/dev sources are downloaded and audited; **300/50 POC subsets have been generated**, with independent output validation pending. Test and benchmark sources are identified in the plan, with local preparation and evaluation still pending. **Validation** and **dev** mean the same role; the source directory remains `nsc_dev_3h`.
 
 | Stage | Planned source | POC / evaluation size | Purpose | Model learns from it? | When used | Status |
 | --- | --- | ---: | --- | --- | --- | --- |
-| Train | `nsc_query_5h` | ~300 utterances | Fine-tuning | Yes, directly through gradient updates | First learning stage | Source downloaded/audited; subset not created |
-| Validation | `nsc_dev_3h` | ~50 utterances | Baseline comparison, tuning, checkpoint/model decisions | No gradients; influences development indirectly | Before and during fine-tuning development | Source downloaded/audited; subset not created |
+| Train | `nsc_query_5h` | 300 utterances, generator report | Fine-tuning | Yes, directly through gradient updates | First learning stage | Subset generated; independent validation pending |
+| Validation | `nsc_dev_3h` | 50 utterances, generator report | Baseline comparison, tuning, checkpoint/model decisions | No gradients; influences development indirectly | Before and during fine-tuning development | Subset generated; independent validation pending |
 | Test | `nsc_test` | 3,684 utterances / ~7 h, upstream | Final held-out Singapore-English evaluation | No gradients or development tuning | After model/configuration is frozen | Planned; local preparation/evaluation pending |
 | External benchmark | `gigaspeech_test` | 19,930 utterances / 35.4 h, upstream | Out-of-domain (OOD) generalization/regression check | No gradients or routine tuning | After NSC test evaluation | Planned; local preparation/evaluation pending |
 
 ```text
-Train: nsc_query_5h → ~300-utterance POC subset
+Train: nsc_query_5h → 300-utterance POC subset
      ↓
 Gradient updates
      ↓
-Validation: nsc_dev_3h → ~50-utterance POC subset
+Validation: nsc_dev_3h → 50-utterance POC subset
      ↓
 Development loop: compare models, tune choices, select checkpoint
      ↓
@@ -70,12 +70,12 @@ The [upstream dataset documentation](https://huggingface.co/datasets/pengyizhou/
 
 | Source | Origin | Full source size | Contents and intended use |
 | --- | --- | --- | --- |
-| `nsc_query_5h` | NSC IMDA Part 6 train partition | 2,289 utterances locally; 5.01 h from manifest durations; ~214 MB, recorded as `214M` | FLAC audio and JSONL manifest; ~300 planned training utterances for gradient updates |
-| `nsc_dev_3h` | NSC IMDA Part 6 train partition | 1,316 utterances locally; 3.02 h from manifest durations | FLAC audio and JSONL manifest; ~50 planned validation utterances for development/checkpoint decisions |
+| `nsc_query_5h` | NSC IMDA Part 6 train partition | 2,289 utterances locally; 5.01 h from manifest durations; ~214 MB, recorded as `214M` | FLAC audio and JSONL manifest; 300 training utterances generated for future fine-tuning |
+| `nsc_dev_3h` | NSC IMDA Part 6 train partition | 1,316 utterances locally; 3.02 h from manifest durations | FLAC audio and JSONL manifest; 50 validation utterances generated for future development/checkpoint decisions |
 | `nsc_test` | Official NSC IMDA Part 6 test partition | 3,684 utterances / ~7 h, upstream | FLAC audio and JSONL manifest, per upstream; planned held-out in-domain evaluation |
 | `gigaspeech_test` | Separate GigaSpeech test corpus | 19,930 utterances / 35.4 h, upstream | WAV PCM_16 audio and JSONL manifest with normalized references, per upstream; planned external/OOD evaluation |
 
-The downloaded query/dev JSONL records use `id`, `speaker`, `duration` (seconds), `text` (reference transcript), and `audio` (relative path into `audio/`). Their download commands and examples are below. Local train/dev hour totals now sum the manifest duration fields in the eligibility check; test/benchmark hours remain upstream descriptions. POC subset counts remain planned.
+The downloaded query/dev JSONL records use `id`, `speaker`, `duration` (seconds), `text` (reference transcript), and `audio` (relative path into `audio/`). Their download commands and examples are below. Local train/dev hour totals sum manifest duration fields; test/benchmark hours remain upstream descriptions. The generator reported 300/50 POC records; independent file checks remain pending.
 
 ### Split construction and hands-on verification
 
@@ -339,7 +339,7 @@ Total duration:      3.02 hours
 Remaining duration:  2.71 hours
 ```
 
-These are eligible-pool estimates, not prepared subsets or filtered manifests. The check counts each `<unk>` utterance once, explaining why 131/91 affected records differ from the earlier 145/104 token occurrences.
+These figures describe the eligible source pools; the read-only check creates no filtered files. Subsequent subset generation is documented below. The check counts each `<unk>` utterance once, explaining why 131/91 affected records differ from the earlier 145/104 token occurrences.
 
 #### POC annotation policy — decision complete
 
@@ -350,9 +350,9 @@ These are eligible-pool estimates, not prepared subsets or filtered manifests. T
 | Local speech such as `lah`, `wah`, `ya`, `mm` | Keep as normal speech |
 | Original manifests | Never modify; write derived data separately |
 
-Excluding `<unk>` is a pragmatic tutorial choice, not a claim that these utterances are bad data. The tag indicates speech was not confidently transcribed; deleting only the token could leave spoken content without corresponding text and create audio/text misalignment. We are deliberately avoiding manual relabeling. The estimated remaining **2,158 train records / 4.59 h** and **1,225 validation records / 2.71 h** comfortably exceed the planned ~300/~50 subsets.
+Excluding `<unk>` is a pragmatic tutorial choice, not a claim that these utterances are bad data. The tag indicates speech was not confidently transcribed; deleting only the token could leave spoken content without corresponding text and create audio/text misalignment. We are deliberately avoiding manual relabeling. The eligible **2,158 train records / 4.59 h** and **1,225 validation records / 2.71 h** comfortably exceed the chosen 300/50 POC sizes.
 
-The earlier manual-audio-review note remains future work for a more rigorous data-quality project. No individual annotations are corrected in this POC, and no filtering or normalization output has been produced yet.
+The earlier manual-audio-review note remains future work for a more rigorous data-quality project. No individual annotations are corrected in this POC. The generator below excludes `<unk>` utterances; noise-token normalization remains pending.
 
 #### Transcript normalization — planned
 
@@ -363,12 +363,113 @@ Annotation handling is decided above. Finalize and record the remaining transcri
 Use query for gradient updates and dev for validation WER, development choices, and checkpoint selection. They share the NSC train partition but have locally verified, separate speaker and utterance-ID sets. Validation influences development, so it does not replace the final `nsc_test` evaluation.
 
 <a id="next-create-tiny-deterministic-poc-subsets--planned"></a>
+<a id="next-data-preparation-on-the-compute-node--planned"></a>
 
-## Next: data preparation on the compute node — planned
+## Deterministic POC subset generation — complete
 
-With source counts, train/validation separation, annotation counts, and eligibility impact verified, next create roughly **300 training utterances** from query and **50 validation utterances** from dev, excluding whole `<unk>` utterances under the chosen POC policy. Use a fixed selection rule or seed; record selected IDs and recheck subset separation. Check referenced audio before inference. Finalize remaining normalization rules, remove `<noise>`/`<v-noise>` tokens in derived transcripts while retaining local speech, and convert derived data to NeMo manifests before baseline validation inference.
+The operator successfully ran [`create_poc_subsets.py`](../../scripts/guide-02/create_poc_subsets.py) on the Brev node. It reads source manifests, excludes whole `<unk>` utterances, and writes selected source-format records to a separate output directory. Transcripts are not normalized or converted to NeMo format by this script.
 
-Follow the [12-step workflow agenda](#guide-02-workflow-agenda); subset creation and steps 5–12 remain pending. NSC test and GigaSpeech sources are identified in the plan, with local preparation and evaluation still pending. The aim remains a small POC/tutorial, not production optimization.
+### Design decisions
+
+The eligible pools were **2,158 train utterances / 4.59 h** and **1,225 validation utterances / 2.71 h** after excluding `<unk>`. We chose **300 train / 50 validation utterances** for fast end-to-end learning on the NVIDIA L4. This is a POC engineering choice, not a production-scale train/validation ratio.
+
+- **Train:** Cycle across speakers, taking at most one utterance per speaker per pass, to avoid a few prolific speakers dominating the small subset.
+- **Validation:** Select one utterance from each of 50 distinct speakers to maximize speaker breadth.
+- **Determinism:** `seed = 42`; train uses `random.Random(seed)` and validation uses `random.Random(seed + 1)`. Separate RNG streams keep changes to one subset size from unexpectedly changing the other. Reproduction assumes the same source manifests and ordering.
+
+### Derived-data directory and container execution
+
+The original manifests remain unchanged. The operator created a dedicated derived-data directory on the host:
+
+```bash
+mkdir -p ~/data/nsc/poc
+```
+
+```text
+~/data/nsc/
+├── nsc_query_5h/          # source
+├── nsc_dev_3h/            # source
+└── poc/                   # derived POC manifests
+    ├── train_300.jsonl
+    └── dev_50.jsonl
+```
+
+Successful command from the Brev host:
+
+```bash
+docker run --rm \
+  -v /home/ubuntu/data/nsc:/data/nsc:ro \
+  -v /home/ubuntu/data/nsc/poc:/output:rw \
+  -v /home/ubuntu/work/nemotron-poc:/work:ro \
+  nvcr.io/nvidia/nemo-speech:26.07.00 \
+  python3 /work/create_poc_subsets.py \
+    /data/nsc/nsc_query_5h/manifest.jsonl \
+    /data/nsc/nsc_dev_3h/manifest.jsonl \
+    /output \
+    --train-count 300 \
+    --dev-count 50 \
+    --seed 42
+```
+
+| Host path | Container path | Access |
+| --- | --- | --- |
+| `/home/ubuntu/data/nsc` | `/data/nsc` | Read-only source data (`:ro`) |
+| `/home/ubuntu/work/nemotron-poc` | `/work` | Read-only tooling (`:ro`) |
+| `/home/ubuntu/data/nsc/poc` | `/output` | Read/write derived output (`:rw`) |
+
+The only writable host bind mount is the dedicated derived-data directory. The script was present in the host work directory for this run; its repository location is `scripts/guide-02/`. Manifest and output paths are runtime arguments. No `--gpus all` is required because generation is a CPU/data task.
+
+### Observed successful output
+
+The generator reported:
+
+```text
+Train output:    /output/train_300.jsonl
+Train records:   300
+Train speakers:  111
+Train duration:  0.66 hours
+
+Dev output:      /output/dev_50.jsonl
+Dev records:     50
+Dev speakers:    50
+Dev duration:    0.11 hours
+```
+
+Train: **300 utterances across all 111 eligible train speakers**, approximately **0.66 h / 40 minutes**. Validation: **50 utterances from 50 distinct speakers**, approximately **0.11 h / 6.6 minutes**. Durations sum manifest fields and are rounded. These are successful generation reports; independent output validation remains pending.
+
+### Troubleshooting: arbitrary container UID
+
+An initial attempt added the host UID/GID option to make generated files inherit the `ubuntu` account's ownership:
+
+```bash
+--user "$(id -u):$(id -g)"
+```
+
+It first failed with:
+
+```text
+exec: python3: not found
+```
+
+The interpreter was located at `/opt/venv/bin/python3`, but invoking it under the arbitrary host UID then failed with:
+
+```text
+/opt/venv/bin/python3: Permission denied
+```
+
+Do not assume a vendor container supports arbitrary host UID execution. This POC uses the image's default execution context and constrains host writes with read-only source/tooling mounts and a writable derived-output mount. The UID option is omitted from the successful command. Inspect generated-file ownership next; if correction is needed, handle it explicitly after generation. Ownership has not yet been checked or corrected.
+
+## Next: validate derived subsets — pending
+
+The files have been created, but are **not yet fully validated**. On the compute node, independently:
+
+1. Inspect output file ownership.
+2. Verify line counts with `wc -l`: 300 train / 50 validation.
+3. Verify `<unk>` is absent.
+4. Verify speaker counts: 111 train / 50 validation.
+5. Verify deterministic reproduction using the same sources, seed, and sampling settings.
+
+Recheck separation of the derived speaker/utterance-ID sets as well; existing source-overlap results remain separate evidence. After these checks, normalize `<noise>`/`<v-noise>` in derived transcripts, preserve local speech, convert NeMo manifests with container-valid audio paths, and run baseline validation inference. Normalization, conversion, baseline inference, fine-tuning, checkpointing, validation WER, `nsc_test`, and `gigaspeech_test` remain pending.
 
 ## Completion boundaries and next step
 
@@ -383,15 +484,17 @@ Follow the [12-step workflow agenda](#guide-02-workflow-agenda); subset creation
 | NSC training/query download and extraction | Complete: 2,289 records, 214M |
 | NSC dev download and extraction | Complete: 1,316 records |
 | Four-stage data strategy and workflow | Documented; execution remains pending |
-| Source-manifest checks | Counts verified: 2,289 / 1,316; referenced-audio integrity not yet reported |
+| Source train/dev manifest inspection | Complete for reported source checks; referenced-audio integrity not yet reported |
 | Speaker-overlap verification | Complete for train/validation: 111 / 64 speakers, 0 overlap; NSC test checks pending |
 | Utterance-ID overlap verification | Complete for train/validation: 0 overlap; NSC test checks pending |
 | Annotation-token inventory and counts | Complete for both full source manifests: `<v-noise>`, `<unk>`, `<noise>` |
 | `<unk>` eligibility impact analysis | Complete: 2,158 / 1,225 records would remain, 4.59 / 2.71 h |
 | POC `<unk>`/annotation-handling decision | Complete: exclude whole `<unk>` utterances; keep noise-tagged utterances for later token removal |
-| Tiny deterministic train/validation subsets | Not yet complete: approximately 300 / 50 planned |
+| Deterministic speaker-aware subset generation | Complete: seed 42; generator reported 300 train / 50 validation |
+| Derived POC manifest creation | Complete: `train_300.jsonl` / `dev_50.jsonl` |
+| Independent derived-subset validation | Not yet complete: ownership, counts, `<unk>` absence, speakers, reproduction |
 | Transcript normalization output | Not yet created; remaining transcript/scoring rules pending |
-| Annotation-policy application | Not yet complete; decision recorded, derived output pending |
+| Annotation-policy application | Partial: generator excludes `<unk>`; noise-token normalization pending |
 | NeMo manifest conversion | Not yet complete |
 | Baseline inference / validation WER | Not yet complete |
 | Training smoke test | Not yet complete |
@@ -405,13 +508,13 @@ Follow the [12-step workflow agenda](#guide-02-workflow-agenda); subset creation
 | True streaming inference | Not yet complete |
 | Manual annotation/audio review | Future work; excluded from this POC |
 
-Next, create the tiny deterministic subsets from eligible utterances, finish normalization, and convert derived manifests. Later: baseline validation → train → validation/development loop → freeze model/configuration → `nsc_test` → `gigaspeech_test`. Both evaluations remain planned. The infrastructure progression remains Docker validation → actual Nemotron inference → streaming inference → package the workload → SLURM; streaming and scheduler work remain future milestones.
+Next, independently validate the derived subsets, finish normalization, and convert derived manifests. Later: baseline validation → train → validation/development loop → freeze model/configuration → `nsc_test` → `gigaspeech_test`. Both evaluations remain planned. The infrastructure progression remains Docker validation → actual Nemotron inference → streaming inference → package the workload → SLURM; streaming and scheduler work remain future milestones.
 
 <a id="single-file-inference-reference--not-yet-executed"></a>
 
 ## Appendix: optional single-file inference smoke test — not yet executed
 
-These previously prepared commands remain available for a one-file check; they are not evidence of completed baseline inference. The current next milestone is the data-preparation sequence above. Run these commands in the GPU host's shell, including when connected over SSH. They require no notebook, GUI, or microphone. This is whole-file inference with a streaming-capable model; true streaming is a later milestone.
+These previously prepared commands remain available for a one-file check; they are not evidence of completed baseline inference. The current next milestone is independent subset validation above. Run these commands in the GPU host's shell, including when connected over SSH. They require no notebook, GUI, or microphone. This is whole-file inference with a streaming-capable model; true streaming is a later milestone.
 
 ### 1. Create an audio directory and download a small sample
 
