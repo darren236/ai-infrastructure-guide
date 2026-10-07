@@ -69,6 +69,7 @@ lightning_logs/
 *.onnx
 
 # Unreviewed logs and local scratch files
+*.bad
 *.log
 typescript
 typescript.*

@@ -265,6 +265,12 @@ Aligned the guide's pipeline, four-stage status table, README handoff, and curre
 
 Recorded a clear stopping point and next-session handoff. Seed 42/deterministic sampling remains the POC reproducibility design; hashing or byte-for-byte regeneration is optional production rigor. Existing ownership, count, tag, and separation results are retained. This is a status/documentation update, with no new scripts, normalized artifacts, dataset downloads, or GPU execution claimed.
 
+### 2026-10-07 — Repository organization reviewed
+
+Reviewed the tracked guides, scripts, navigation, roadmap, progress history, and ignore rules. Kept the existing directory layout and per-guide README agendas. Added a Guide 02 section map and tooling index, grouped source manifest checks after node/model setup and dataset download, consolidated normalization guidance, and placed troubleshooting with the reference material.
+
+Aligned the reproduction download directory with the recorded Brev data layout and added current-checkpoint links to the guide index. Local mistaken script copies (`*.bad`) are ignored. Existing helper code, validation results, completion boundaries, and historical milestones are preserved. Transcript normalization remains next; no new node execution or model progress is claimed.
+
 ## Updating this log
 
 For each meaningful milestone, add a dated entry with the objective, work performed, links to evidence, observed result, blockers or lessons, and next step. Identify documentation sync dates and execution dates separately when known. Update **Current state** to match the latest evidence, while preserving earlier milestone snapshots. Distinguish prepared instructions from performed and validated work.

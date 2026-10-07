@@ -10,6 +10,17 @@ Build a small proof of concept (POC) and tutorial for fine-tuning `nvidia/nemotr
 
 [Guide 01](01-brev-gpu-node-validation.md#agenda-validate-the-stack-from-gpu-to-application) covers host, container, and framework access. This guide continues at **layer 8: application** with the Nemotron ASR POC. NeMo import and model placement extend the reported layer 7 checks; transcription, training, and evaluation remain pending.
 
+### Guide sections
+
+| Reading order | Sections |
+| --- | --- |
+| Overview | [Current pipeline](#current-pipeline-status) · [Data strategy](#data-strategy-and-experiment-overview) |
+| Node setup | [Preflight](#node-preflight--complete) · [NeMo and model loading](#nemo-container-and-model-on-gpu--complete) |
+| Source data | [NSC download](#nsc-trainingquery-and-development-data--downloaded-and-extracted) · [Manifest checks and annotation policy](#source-manifest-checks--complete) |
+| Derived POC data | [Subset generation](#deterministic-poc-subset-generation--complete) · [Independent validation](#derived-poc-subset-validation--complete) |
+| Next work and status | [Transcript normalization](#next-transcript-normalization--planned) · [Completion boundaries and checkpoint](#completion-boundaries-and-next-step) |
+| References | [Helper scripts](../../scripts/guide-02/README.md) · [Troubleshooting](#troubleshooting-notes) · [Optional one-WAV test](#appendix-optional-single-file-inference-smoke-test--not-yet-executed) |
+
 ## Guide 02 workflow agenda
 
 [Node preflight](#node-preflight--complete) and [NeMo/model loading](#nemo-container-and-model-on-gpu--complete) are recorded setup checks. Source inspection, train/validation separation, annotation enumeration, eligibility analysis, the POC annotation policy, subset generation, and [independent subset checks](#derived-poc-subset-validation--complete) are complete. The 300 train / 50 validation records have no `<unk>` tags or shared speakers/IDs. Referenced-audio integrity, NSC test checks, and steps 5–12 remain pending.
@@ -119,51 +130,15 @@ The [upstream dataset documentation](https://huggingface.co/datasets/pengyizhou/
 
 The downloaded query/dev JSONL records use `id`, `speaker`, `duration` (seconds), `text` (reference transcript), and `audio` (relative path into `audio/`). Their download commands and examples are below. Local train/dev hour totals sum manifest duration fields; test/benchmark hours remain upstream descriptions. Independent checks confirmed 300/50 POC records.
 
-Current original manifests on the Brev host, unchanged:
-
-```text
-/home/ubuntu/data/nsc/nsc_query_5h/manifest.jsonl
-/home/ubuntu/data/nsc/nsc_dev_3h/manifest.jsonl
-```
-
-### Split construction and hands-on verification
-
-`nsc_query_5h` and `nsc_dev_3h` are separate selections from the NSC Part 6 train partition, constructed using different speaker sets. **`nsc_dev_3h` is not a subset of `nsc_query_5h`**. The [publisher's split-construction notes](https://huggingface.co/datasets/pengyizhou/IALP-2026-data#split-construction-nsc) state that query, dev, and `nsc_test` are mutually speaker-disjoint, and query/dev exclude every speaker appearing in the official NSC test partition. `nsc_test` comes from that official test partition.
-
-**Verified on the Brev node:** The operator used [`check_split_overlap.py`](../../scripts/guide-02/check_split_overlap.py) to check the complete train and validation manifests. The script accepts both manifest paths at runtime and only reads them.
-
-Rerun from the repository root **on the GPU compute node**. The checkout and scripts must exist on that node; a laptop checkout is not automatically available over SSH. These reproduction commands map the host source directory to `/data/nsc` inside the container; change the mount and arguments if your data lives elsewhere.
-
-```bash
-docker run --rm \
-  -v /home/ubuntu/data/nsc:/data/nsc:ro \
-  -v "$PWD/scripts/guide-02:/scripts:ro" \
-  nvcr.io/nvidia/nemo-speech:26.07.00 \
-  python /scripts/check_split_overlap.py \
-  /data/nsc/nsc_query_5h/manifest.jsonl \
-  /data/nsc/nsc_dev_3h/manifest.jsonl
-```
-
-Verified Brev output:
-
-```text
-Train records:   2289
-Dev records:     1316
-Train speakers:  111
-Dev speakers:    64
-Speaker overlap: 0
-ID overlap:      0
-```
-
-The complete train and validation manifests share no speakers or utterance IDs; dev is not simply a subset of query. This independently confirms the upstream train/dev speaker-disjoint design. It does **not** verify separation from `nsc_test`: compare query/dev/test pairwise when preparing test. The derived POC subsets were also [checked independently](#derived-poc-subset-validation--complete).
-
-**SA/reproducibility:** Both checks ran inside the version-pinned NeMo Speech container with the source dataset mounted read-only. In these commands, `:ro` makes the data and script mounts read-only; `/scripts` is the container's script directory, and manifest paths are command-line arguments. Python comes from the container, without installing it on the host or modifying the dataset. Neither helper contains Brev-specific hardcoded paths. Keep the source version/location and script version with the run notes; the download directory below remains a reproduction example.
+<a id="why-keep-development-data-separate"></a>
 
 ### Direct learning versus development decisions
 
 Training data changes model weights through backpropagation. Validation data must never enter gradient updates, but its results still influence the final system indirectly: an engineer may choose a learning rate, checkpoint, normalization rule, or decoding setting because it improves validation WER. Finalize those choices using validation, and record them before testing.
 
 Test results are for evaluating the finalized internal result. If we repeatedly tune choices based on test results, that set effectively becomes another validation set and loses its role as an independent final check. A new untouched holdout would be needed for a fresh final evaluation. See the [scikit-learn evaluation guidance](https://scikit-learn.org/stable/modules/cross_validation.html) for this distinction.
+
+Use query for gradient updates and dev for validation WER, development choices, and checkpoint selection. They share the NSC train partition but have locally verified, separate speaker and utterance-ID sets. Validation influences development, so it does not replace the final `nsc_test` evaluation.
 
 ### What results can tell us
 
@@ -247,11 +222,11 @@ The bind mount stores Hugging Face cache files in `~/hf-cache` on the host, outs
 
 **Milestone recorded:** 2026-10-05, the documentation sync date. The operator downloaded the small NSC Part 6 training/query dataset and the separate development split from [IALP-2026-data on Hugging Face](https://huggingface.co/datasets/pengyizhou/IALP-2026-data). The counts and records below are operator-reported observations. Keep downloaded archives and audio on the GPU host, outside the repository.
 
-For reproduction, first choose a host working directory outside the Git checkout. Both archives extract into the current directory. For example:
+For reproduction, use a host data directory outside the Git checkout. Both archives extract into the current directory. The commands below use the same layout as the later Brev manifest checks (`/home/ubuntu/data/nsc` for the recorded `ubuntu` account):
 
 ```bash
-mkdir -p ~/asr-data
-cd ~/asr-data
+mkdir -p ~/data/nsc
+cd ~/data/nsc
 ```
 
 ### Training/query split
@@ -297,6 +272,50 @@ Example development record (ID and audio filename shortened):
 ```
 
 The inspected train/validation records share the fields `id`, `speaker`, `duration`, `text`, and `audio`, with relative FLAC paths. These source manifests have not yet been converted to NeMo format.
+
+## Source manifest checks — complete
+
+The [helper-script index](../../scripts/guide-02/README.md) lists each tool's inputs and whether it writes output. These checks inspect manifest records; referenced-audio integrity and model execution remain separate, unreported checks.
+
+Current original manifests on the Brev host, unchanged:
+
+```text
+/home/ubuntu/data/nsc/nsc_query_5h/manifest.jsonl
+/home/ubuntu/data/nsc/nsc_dev_3h/manifest.jsonl
+```
+
+### Split construction and hands-on verification
+
+`nsc_query_5h` and `nsc_dev_3h` are separate selections from the NSC Part 6 train partition, constructed using different speaker sets. **`nsc_dev_3h` is not a subset of `nsc_query_5h`**. The [publisher's split-construction notes](https://huggingface.co/datasets/pengyizhou/IALP-2026-data#split-construction-nsc) state that query, dev, and `nsc_test` are mutually speaker-disjoint, and query/dev exclude every speaker appearing in the official NSC test partition. `nsc_test` comes from that official test partition.
+
+**Verified on the Brev node:** The operator used [`check_split_overlap.py`](../../scripts/guide-02/check_split_overlap.py) to check the complete train and validation manifests. The script accepts both manifest paths at runtime and only reads them.
+
+Rerun from the repository root **on the GPU compute node**. The checkout and scripts must exist on that node; a laptop checkout is not automatically available over SSH. These reproduction commands map the host source directory to `/data/nsc` inside the container; change the mount and arguments if your data lives elsewhere.
+
+```bash
+docker run --rm \
+  -v /home/ubuntu/data/nsc:/data/nsc:ro \
+  -v "$PWD/scripts/guide-02:/scripts:ro" \
+  nvcr.io/nvidia/nemo-speech:26.07.00 \
+  python /scripts/check_split_overlap.py \
+  /data/nsc/nsc_query_5h/manifest.jsonl \
+  /data/nsc/nsc_dev_3h/manifest.jsonl
+```
+
+Verified Brev output:
+
+```text
+Train records:   2289
+Dev records:     1316
+Train speakers:  111
+Dev speakers:    64
+Speaker overlap: 0
+ID overlap:      0
+```
+
+The complete train and validation manifests share no speakers or utterance IDs; dev is not simply a subset of query. This independently confirms the upstream train/dev speaker-disjoint design. It does **not** verify separation from `nsc_test`: compare query/dev/test pairwise when preparing test. The derived POC subsets were also [checked independently](#derived-poc-subset-validation--complete).
+
+**SA/reproducibility:** Both checks ran inside the version-pinned NeMo Speech container with the source dataset mounted read-only. In these commands, `:ro` makes the data and script mounts read-only; `/scripts` is the container's script directory, and manifest paths are command-line arguments. Python comes from the container, without installing it on the host or modifying the dataset. Neither helper contains Brev-specific hardcoded paths. Keep the source version/location and script version with the run notes; the download commands above are reproduction examples.
 
 <a id="transcript-annotations-and-normalization--planned"></a>
 
@@ -403,13 +422,9 @@ Excluding `<unk>` is a pragmatic tutorial choice, not a claim that these utteran
 
 The earlier manual-audio-review note remains future work for a more rigorous data-quality project. No individual annotations are corrected in this POC. The generator below excludes `<unk>` utterances; noise-token normalization remains pending.
 
-#### Transcript normalization — planned
+<a id="transcript-normalization--planned"></a>
 
-Annotation handling is decided above. Finalize and record the remaining transcript/scoring rules, then apply the policy consistently and reproducibly to separate derived files before NeMo conversion or WER. Normalized manifests have not been created; keep original manifests unchanged.
-
-### Why keep development data separate?
-
-Use query for gradient updates and dev for validation WER, development choices, and checkpoint selection. They share the NSC train partition but have locally verified, separate speaker and utterance-ID sets. Validation influences development, so it does not replace the final `nsc_test` evaluation.
+Apply this policy in the [next transcript-normalization step](#next-transcript-normalization--planned) before NeMo conversion or WER. Normalized manifests have not been created; keep original manifests unchanged.
 
 <a id="next-create-tiny-deterministic-poc-subsets--planned"></a>
 <a id="next-data-preparation-on-the-compute-node--planned"></a>
@@ -607,34 +622,6 @@ All 111 eligible train speakers are represented; validation contains 50 distinct
 
 Speaker overlap: **0**. Utterance-ID overlap: **0**. These host paths are mapped to container paths by the bind mounts above; they are not laptop paths. Noise annotation tokens remain present until normalization.
 
-## Troubleshooting notes
-
-### Troubleshooting: arbitrary container UID
-
-An initial attempt added the host UID/GID option to make generated files inherit the `ubuntu` account's ownership:
-
-```bash
---user "$(id -u):$(id -g)"
-```
-
-It first failed with:
-
-```text
-exec: python3: not found
-```
-
-The interpreter was located at `/opt/venv/bin/python3`, but invoking it under the arbitrary host UID then failed with:
-
-```text
-/opt/venv/bin/python3: Permission denied
-```
-
-Do not assume a vendor container supports arbitrary host UID/GID execution. This POC uses the image's default execution context and constrains host writes with read-only source/tooling mounts and a writable derived-output mount. The UID option is omitted from the successful command; generated-file ownership was explicitly corrected afterward as recorded above.
-
-### Unexpected output: inspect the actual script
-
-During node validation, `check_split_overlap.py` was accidentally overwritten with transcript-tag inspection code. Unexpected output prompted inspection of the script, preservation of the incorrect copy as `check_split_overlap.py.bad` locally, restoration of the known-good version, and rerunning validation. The incorrect artifact is not committed. Inspect the program producing unexpected output before drawing conclusions about the data.
-
 ## Next: transcript normalization — planned
 
 Define and implement removal of `<v-noise>` and `<noise>` annotation tokens from the derived transcripts while preserving actual words, identifiable Singapore-English/Singlish speech (`lah`, `wah`, `ya`, `mm`), and fillers. Record and apply the policy consistently for train/validation. Create new derived artifacts, either as separate normalized manifests or reproducibly within NeMo conversion; preserve the original source manifests and generated subset files. Normalization has not been performed.
@@ -692,6 +679,34 @@ Fixed seed **42** and separate deterministic RNG streams are already part of the
 **Next session:** Define and implement transcript normalization for `<v-noise>` and `<noise>`, preserving spoken words and original manifests, then convert the derived POC data into NeMo ASR manifests.
 
 Later: baseline inference → baseline validation WER → training smoke test → fine-tune on train → validation/development loop → freeze checkpoint/configuration → `nsc_test` → `gigaspeech_test`. Both evaluations remain unstarted. The infrastructure progression remains Docker validation → actual Nemotron inference → streaming inference → package the workload → SLURM; streaming and scheduler work remain future milestones.
+
+## Troubleshooting notes
+
+### Troubleshooting: arbitrary container UID
+
+An initial attempt added the host UID/GID option to make generated files inherit the `ubuntu` account's ownership:
+
+```bash
+--user "$(id -u):$(id -g)"
+```
+
+It first failed with:
+
+```text
+exec: python3: not found
+```
+
+The interpreter was located at `/opt/venv/bin/python3`, but invoking it under the arbitrary host UID then failed with:
+
+```text
+/opt/venv/bin/python3: Permission denied
+```
+
+Do not assume a vendor container supports arbitrary host UID/GID execution. This POC uses the image's default execution context and constrains host writes with read-only source/tooling mounts and a writable derived-output mount. The UID option is omitted from the successful command; generated-file ownership was explicitly corrected afterward as recorded above.
+
+### Unexpected output: inspect the actual script
+
+During node validation, `check_split_overlap.py` was accidentally overwritten with transcript-tag inspection code. Unexpected output prompted inspection of the script, preservation of the incorrect copy as `check_split_overlap.py.bad` locally, restoration of the known-good version, and rerunning validation. The incorrect artifact is not committed. Inspect the program producing unexpected output before drawing conclusions about the data.
 
 <a id="single-file-inference-reference--not-yet-executed"></a>
 

@@ -4,6 +4,8 @@ Practical AI infrastructure guides and a technical portfolio demonstrating NVIDI
 
 Start with **Guide 01** to understand and validate the GPU stack, then follow **Guide 02** into a small Nemotron ASR fine-tuning POC. Each guide's agenda is below; open the guide for commands, explanations, observed results, and pending work.
 
+Use the [current progress](PROGRESS.md#current-state) for the latest checkpoint, [milestone history](PROGRESS.md#milestone-history) for earlier evidence, [helper-script index](scripts/guide-02/README.md) for runnable tooling, and [roadmap](ROADMAP.md) for future topics.
+
 ## Guides and agendas
 
 <a id="agenda-from-physical-gpu-to-application"></a>
@@ -31,6 +33,8 @@ Start with **Guide 01** to understand and validate the GPU stack, then follow **
 [Open Guide 02](docs/guides/02-nemotron-streaming-singapore-english.md)
 
 **Goal:** Fine-tune `nvidia/nemotron-3.5-asr-streaming-0.6b` on NSC Part 6 using the NVIDIA L4 Brev instance. This small POC follows **train → validation/development loop → freeze model/configuration → NSC held-out test → GigaSpeech external/OOD benchmark**.
+
+**Start here:** Read the [data strategy](docs/guides/02-nemotron-streaming-singapore-english.md#data-strategy-and-experiment-overview), then follow [node preflight](docs/guides/02-nemotron-streaming-singapore-english.md#node-preflight--complete), [NeMo/model setup](docs/guides/02-nemotron-streaming-singapore-english.md#nemo-container-and-model-on-gpu--complete), and [NSC download](docs/guides/02-nemotron-streaming-singapore-english.md#nsc-trainingquery-and-development-data--downloaded-and-extracted). The [guide section map](docs/guides/02-nemotron-streaming-singapore-english.md#guide-sections) links the detailed reading order; the hands-on agenda continues below.
 
 1. [Verify source manifests on the node](docs/guides/02-nemotron-streaming-singapore-english.md#split-construction-and-hands-on-verification) — counts checked; referenced-audio integrity not yet reported.
 2. [Verify speaker and utterance-ID separation](docs/guides/02-nemotron-streaming-singapore-english.md#split-construction-and-hands-on-verification) — complete for train/validation; NSC test checks pending.
@@ -65,6 +69,7 @@ ai-infrastructure-guide/
 ├── .gitignore
 ├── scripts/
 │   └── guide-02/
+│       ├── README.md         # Helper purposes, inputs, and node setup
 │       ├── check_split_overlap.py
 │       ├── inspect_transcript_tags.py
 │       ├── check_poc_eligibility.py
@@ -76,7 +81,7 @@ ai-infrastructure-guide/
         └── 02-nemotron-streaming-singapore-english.md
 ```
 
-The [written guides](docs/guides/README.md) contain commands, architecture explanations, and recorded evidence. Guide 02's [overlap check](scripts/guide-02/check_split_overlap.py), [annotation audit](scripts/guide-02/inspect_transcript_tags.py), [eligibility check](scripts/guide-02/check_poc_eligibility.py), and [subset generator](scripts/guide-02/create_poc_subsets.py) are reusable helpers used in recorded node runs. The [progress log](PROGRESS.md) keeps historical milestones; the [roadmap](ROADMAP.md) holds future topics. Add scripts or configuration when an actual guide step needs them, and link from that guide.
+The [written guides](docs/guides/README.md) contain commands, architecture explanations, and recorded evidence. Runnable assets live under `scripts/guide-NN/`; the [Guide 02 tooling index](scripts/guide-02/README.md) explains the four helpers used in recorded node runs. The [progress log](PROGRESS.md) separates current status from historical milestones; the [roadmap](ROADMAP.md) holds future topics. Add scripts or configuration when an actual guide step needs them, and link from that guide.
 
 ## Documentation standard
 
