@@ -61,6 +61,10 @@ ai-infrastructure-guide/
 ├── ROADMAP.md                # Future topics
 ├── PROGRESS.md               # Current status and dated milestone history
 ├── .gitignore
+├── scripts/
+│   └── guide-02/
+│       ├── check_split_overlap.py
+│       └── inspect_transcript_tags.py
 └── docs/
     └── guides/
         ├── README.md         # Short directory index
@@ -68,7 +72,7 @@ ai-infrastructure-guide/
         └── 02-nemotron-streaming-singapore-english.md
 ```
 
-The [written guides](docs/guides/README.md) contain commands, architecture explanations, and recorded evidence. The [progress log](PROGRESS.md) keeps historical milestones; the [roadmap](ROADMAP.md) holds future topics. Add reusable scripts or configuration when an actual guide step needs them, and link from that guide.
+The [written guides](docs/guides/README.md) contain commands, architecture explanations, and recorded evidence. Guide 02's [overlap check](scripts/guide-02/check_split_overlap.py) and [annotation audit](scripts/guide-02/inspect_transcript_tags.py) are reusable helpers validated on the node. The [progress log](PROGRESS.md) keeps historical milestones; the [roadmap](ROADMAP.md) holds future topics. Add scripts or configuration when an actual guide step needs them, and link from that guide.
 
 ## Documentation standard
 

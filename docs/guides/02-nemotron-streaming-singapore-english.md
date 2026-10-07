@@ -81,25 +81,34 @@ The downloaded query/dev JSONL records use `id`, `speaker`, `duration` (seconds)
 
 `nsc_query_5h` and `nsc_dev_3h` are separate selections from the NSC Part 6 train partition, constructed using different speaker sets. **`nsc_dev_3h` is not a subset of `nsc_query_5h`**. The [publisher's split-construction notes](https://huggingface.co/datasets/pengyizhou/IALP-2026-data#split-construction-nsc) state that query, dev, and `nsc_test` are mutually speaker-disjoint, and query/dev exclude every speaker appearing in the official NSC test partition. `nsc_test` comes from that official test partition.
 
-**Verified on the Brev node:** The operator ran a read-only manifest integrity check against:
+**Verified on the Brev node:** The operator used [`check_split_overlap.py`](../../scripts/guide-02/check_split_overlap.py) to check the complete train and validation manifests. The script accepts both manifest paths at runtime and only reads them.
 
-```text
-/data/nsc/nsc_query_5h/manifest.jsonl
-/data/nsc/nsc_dev_3h/manifest.jsonl
+Rerun from the repository root **on the GPU compute node**. The checkout and scripts must exist on that node; a laptop checkout is not automatically available over SSH. These commands use the audited source location `/data/nsc`; change the mount and arguments if your data lives elsewhere.
+
+```bash
+docker run --rm \
+  -v /data/nsc:/data/nsc:ro \
+  -v "$PWD/scripts/guide-02:/scripts:ro" \
+  nvcr.io/nvidia/nemo-speech:26.07.00 \
+  python /scripts/check_split_overlap.py \
+  /data/nsc/nsc_query_5h/manifest.jsonl \
+  /data/nsc/nsc_dev_3h/manifest.jsonl
 ```
 
-| Check | Result |
-| --- | ---: |
-| Train records | 2,289 |
-| Validation/dev records | 1,316 |
-| Train speakers | 111 |
-| Validation/dev speakers | 64 |
-| Shared speakers | 0 |
-| Shared utterance IDs | 0 |
+Verified Brev output:
+
+```text
+Train records:   2289
+Dev records:     1316
+Train speakers:  111
+Dev speakers:    64
+Speaker overlap: 0
+ID overlap:      0
+```
 
 The complete train and validation manifests share no speakers or utterance IDs; dev is not simply a subset of query. This independently confirms the upstream train/dev speaker-disjoint design. It does **not** verify separation from `nsc_test`: compare query/dev/test pairwise when preparing test, and recheck the eventual POC subsets.
 
-**SA/reproducibility:** The separation and annotation checks used reusable scripts inside the version-pinned `nvcr.io/nvidia/nemo-speech:26.07.00` container, with source data mounted read-only. Python came from the container; no host Python installation or host-dataset modification was needed. Retain the scripts, run command, and source checksums for reruns. These paths describe the latest audit location; the download directory below is a reproduction example.
+**SA/reproducibility:** Both checks ran inside the version-pinned NeMo Speech container with the source dataset mounted read-only. In these commands, `:ro` makes the data and script mounts read-only; `/scripts` is the container's script directory, and manifest paths are command-line arguments. Python comes from the container, without installing it on the host or modifying the dataset. Neither helper contains Brev-specific hardcoded paths. Record source checksums for reruns; the download directory below remains a reproduction example.
 
 ### Direct learning versus development decisions
 
@@ -244,15 +253,39 @@ The inspected train/validation records share the fields `id`, `speaker`, `durati
 
 ### Transcript annotation audit — complete
 
-**Verified observation:** The operator inspected both complete source manifests for `<...>` annotation tokens using the read-only container workflow above.
+**Verified observation:** The operator inspected both complete source manifests for `<...>` annotation tokens using [`inspect_transcript_tags.py`](../../scripts/guide-02/inspect_transcript_tags.py). It accepts one or more manifest paths, scans transcript text, and reports tagged records separately from individual token occurrences.
 
-| Audit metric | Train: `nsc_query_5h` | Validation: `nsc_dev_3h` |
-| --- | ---: | ---: |
-| Records inspected | 2,289 | 1,316 |
-| Records containing annotation tags | 511 | 286 |
-| `<v-noise>` occurrences | 598 | 345 |
-| `<unk>` occurrences | 145 | 104 |
-| `<noise>` occurrences | 49 | 24 |
+From the same repository root on the compute node:
+
+```bash
+docker run --rm \
+  -v /data/nsc:/data/nsc:ro \
+  -v "$PWD/scripts/guide-02:/scripts:ro" \
+  nvcr.io/nvidia/nemo-speech:26.07.00 \
+  python /scripts/inspect_transcript_tags.py \
+  /data/nsc/nsc_query_5h/manifest.jsonl \
+  /data/nsc/nsc_dev_3h/manifest.jsonl
+```
+
+Verified Brev results, summarized by source (the script also prints each manifest path):
+
+```text
+Train: nsc_query_5h
+Total records:      2289
+Records with tags:   511
+<v-noise>:           598
+<unk>:               145
+<noise>:              49
+```
+
+```text
+Validation: nsc_dev_3h
+Total records:      1316
+Records with tags:   286
+<v-noise>:           345
+<unk>:               104
+<noise>:              24
+```
 
 Tags are common in both sources. Token counts are occurrences, not distinct records; a transcript can contain several tags. The reported audit found these three types in the checked manifests, rather than only `<v-noise>`.
 

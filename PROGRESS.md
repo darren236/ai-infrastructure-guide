@@ -214,6 +214,12 @@ The complete-manifest annotation audit found 511/286 tagged records. Train/valid
 
 Documented the intended annotation meanings and the unverified possibility that some `<unk>` labels could hide identifiable local speech. No audio listening has confirmed that hypothesis. Manual listening/relabeling is outside this reproducible POC; a reviewed derived dataset is future work. No final normalization/filtering rule is selected. Subsets, NeMo conversion, inference, and training remain unperformed.
 
+### 2026-10-07 — Guide 02 validated audit helpers added
+
+Added the supplied, node-validated [`check_split_overlap.py`](scripts/guide-02/check_split_overlap.py) and [`inspect_transcript_tags.py`](scripts/guide-02/inspect_transcript_tags.py) unchanged under `scripts/guide-02/`. Guide 02 links to the helpers, documents runtime manifest arguments and read-only NeMo-container reproduction commands, and preserves the verified Brev results.
+
+This publishes existing validation tools and evidence; no new node run is claimed. Subset creation, normalization, NeMo conversion, inference, and training remain pending. `check_poc_eligibility.py` is not added because it has not been validated on the node.
+
 ## Updating this log
 
 For each meaningful milestone, add a dated entry with the objective, work performed, links to evidence, observed result, blockers or lessons, and next step. Identify documentation sync dates and execution dates separately when known. Update **Current state** to match the latest evidence, while preserving earlier milestone snapshots. Distinguish prepared instructions from performed and validated work.
