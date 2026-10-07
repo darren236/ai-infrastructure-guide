@@ -47,6 +47,14 @@ CMakeCache.txt
 # Datasets, model weights, and generated workload output
 data/
 datasets/
+# Host directories and archives named in Guide 02
+hf-cache/
+asr-audio/
+asr-data/
+nsc_query_5h/
+nsc_dev_3h/
+nsc-query.tar.gz
+nsc-dev.tar.gz
 checkpoints/
 models/
 outputs/
@@ -71,4 +79,4 @@ temp/
 .cache/
 
 # Reviewed benchmark reports and sanitized evidence may be committed
-# under benchmarks/ or docs/ using deliberate filenames and formats.
+# under docs/ or guides/ using deliberate filenames and formats.

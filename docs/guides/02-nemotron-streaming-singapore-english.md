@@ -80,6 +80,13 @@ The bind mount stores Hugging Face cache files in `~/hf-cache` on the host, outs
 
 **Milestone recorded:** 2026-10-05, the documentation sync date. The operator downloaded the small NSC Part 6 training/query dataset and the separate development split from [IALP-2026-data on Hugging Face](https://huggingface.co/datasets/pengyizhou/IALP-2026-data). The counts and records below are operator-reported observations. Keep downloaded archives and audio on the GPU host, outside the repository.
 
+For reproduction, first choose a host working directory outside the Git checkout. Both archives extract into the current directory. For example:
+
+```bash
+mkdir -p ~/asr-data
+cd ~/asr-data
+```
+
 ### Training/query split
 
 ```bash
@@ -126,7 +133,7 @@ The inspected train/dev records share the fields `id`, `speaker`, `duration`, `t
 
 ### Why keep development data separate?
 
-Evaluate on utterances and speakers not used for fine-tuning. Keeping the supplied dev split separate from training avoids reusing training examples for the POC's before/after comparison. Speaker and utterance overlap checks remain to be performed before claiming the split is disjoint; the two example records alone do not establish that.
+Evaluate on utterances and speakers not used for fine-tuning. Reserve the supplied dev split for evaluation and checkpoint selection; use the query split for fine-tuning. The [dataset publisher](https://huggingface.co/datasets/pengyizhou/IALP-2026-data#split-construction-nsc) describes the NSC splits as speaker-disjoint. Local speaker and utterance overlap checks remain pending; the two example records alone do not verify that property.
 
 ## Next: create tiny deterministic POC subsets — planned
 

@@ -10,7 +10,13 @@
 - **Actual GPU inference/computation, real training, NeMo training, distributed training/NCCL, and performance benchmarking:** Not yet complete.
 - **Training runs, application deployments, and benchmarks:** None documented.
 
-## 2026-10-01 — Initial scaffold
+**Current next step:** Create deterministic Guide 02 subsets of approximately **300 training / 50 dev utterances**. Subset creation, NeMo manifest conversion, annotation-tag cleanup, and baseline inference remain pending.
+
+## Milestone history
+
+The dated entries below record status and next steps at each milestone; earlier pending items may have been completed in later entries. Use **Current state** above and the guide completion sections for the latest status. Entry dates record documentation sync unless an execution date is explicitly stated. Historical Part 1–4 names refer to Guide 01's earlier organization; it now follows the eight-layer agenda.
+
+### 2026-10-01 — Initial scaffold
 
 Prepared the portfolio README, planned learning roadmap, progress log, Git ignore rules, and directories for documentation, guides, scripts, containers, Slurm, Kubernetes, benchmarks, and diagrams.
 
@@ -18,15 +24,15 @@ This entry records repository setup only. No cloud GPU provisioning or infrastru
 
 **Planned next step at scaffold creation:** Identify a suitable cloud compute environment, capture sanitized hardware and runtime inspection output, and document the first environment inspection in `docs/guides/`.
 
-## 2026-10-01 — Broader AI infrastructure scope
+### 2026-10-01 — Broader AI infrastructure scope
 
 Broadened the portfolio framing to compute, orchestration, distributed systems, and operations. Updated the README and roadmap to describe general infrastructure concepts alongside tool-specific guides. Hands-on work remains planned.
 
-## 2026-10-01 — Guide naming
+### 2026-10-01 — Guide naming
 
 Adopted the name **AI Infrastructure Guide** and updated the repository title, description, and README. The guide retains directories for practical guides and evidence as hands-on work is completed.
 
-## 2026-10-01 — Guide 01: GPU Node Validation, Part 1 documented
+### 2026-10-01 — Guide 01: GPU Node Validation, Part 1 documented
 
 Recorded the operator's sanitized milestone summary in [the guide](docs/guides/01-brev-gpu-node-validation.md). This entry's date records the documentation sync.
 
@@ -48,9 +54,9 @@ Recorded the operator's sanitized milestone summary in [the guide](docs/guides/0
 
 **Next step:** Validate CUDA userspace and Toolkit availability and versions, then distinguish them from driver compatibility. No raw terminal logs, authentication URLs, email addresses, organization identifiers, SSH configuration, tokens, or instance-specific connection details are included in the milestone.
 
-## 2026-10-05 — Guide 01: CUDA host vs container architecture documented
+### 2026-10-05 — Guide 01: CUDA host vs container architecture documented
 
-Recorded the operator's latest sanitized milestone summary in [Guide 01, Part 2](docs/guides/01-brev-gpu-node-validation.md#part-2-cuda-host-vs-container-architecture). This entry's date records the documentation sync.
+Recorded the operator's latest sanitized milestone summary in [Guide 01, layer 5](docs/guides/01-brev-gpu-node-validation.md#5-cuda-runtime--toolkit). This entry's date records the documentation sync.
 
 | Area | Status | Evidence or boundary |
 | --- | --- | --- |
@@ -66,9 +72,9 @@ Recorded the operator's latest sanitized milestone summary in [Guide 01, Part 2]
 
 **Next step:** Validate Docker and NVIDIA Container Toolkit, then inspect and test CUDA GPU access inside the selected container. No raw logs or sensitive access details are included.
 
-## 2026-10-05 — Guide 01: NVIDIA container and CUDA devel stack validated
+### 2026-10-05 — Guide 01: NVIDIA container and CUDA devel stack validated
 
-Recorded the operator's sanitized milestone in [Guide 01, Part 3](docs/guides/01-brev-gpu-node-validation.md#part-3-docker-nvidia-container-gpu-path-and-cuda-devel-image). This date records the documentation sync; checks were performed by the operator.
+Recorded the operator's sanitized milestone in [Guide 01, layer 6](docs/guides/01-brev-gpu-node-validation.md#6-container-runtime). This date records the documentation sync; checks were performed by the operator.
 
 | Area | Status | Reported evidence |
 | --- | --- | --- |
@@ -87,9 +93,9 @@ Recorded the operator's sanitized milestone in [Guide 01, Part 3](docs/guides/01
 
 **Next step:** Compile and execute a tiny CUDA program in the GPU-enabled devel container, synchronize, and verify its result. Then validate PyTorch CUDA and NeMo. No raw logs or sensitive access details are included.
 
-## 2026-10-05 — Guide 01: PyTorch CUDA access validated
+### 2026-10-05 — Guide 01: PyTorch CUDA access validated
 
-Recorded the operator's sanitized milestone in [Guide 01, Part 4](docs/guides/01-brev-gpu-node-validation.md#part-4-pytorch-cuda-access-through-an-nvidia-ngc-container). This is the documentation sync date.
+Recorded the operator's sanitized milestone in [Guide 01, layer 7](docs/guides/01-brev-gpu-node-validation.md#7-pytorch--nemo). This is the documentation sync date.
 
 | Area | Status | Reported evidence |
 | --- | --- | --- |
@@ -111,7 +117,7 @@ Recorded the operator's sanitized milestone in [Guide 01, Part 4](docs/guides/01
 
 **Next decision:** Keep Guide 01 in progress until its completion scope is agreed. A small GPU tensor computation with synchronization and verified output is the recommended final functional check before closing Guide 01. No raw logs or sensitive connection details are included.
 
-## 2026-10-05 — Guide 02: node preflight documented
+### 2026-10-05 — Guide 02: node preflight documented
 
 Started [Guide 02 — Adapting NVIDIA Nemotron 3.5 Streaming ASR to Singapore English](docs/guides/02-nemotron-streaming-singapore-english.md), intentionally scoped to a small POC/tutorial rather than production-quality tuning. This date records the documentation sync of the operator's sanitized summary.
 
@@ -132,7 +138,7 @@ Before pulling the NeMo container or downloading the model/data, ran `df -h`, `f
 
 **Next step:** Validate the NeMo container for the small POC, then proceed to model loading and dataset preparation. No raw logs or sensitive connection details are included.
 
-## 2026-10-05 — Guide 02: Nemotron model loaded on GPU
+### 2026-10-05 — Guide 02: Nemotron model loaded on GPU
 
 Updated [Guide 02](docs/guides/02-nemotron-streaming-singapore-english.md#nemo-container-and-model-on-gpu--complete) with the operator's successful use of `nvcr.io/nvidia/nemo-speech:26.07.00` and `nvidia/nemotron-3.5-asr-streaming-0.6b`. Created `~/hf-cache` on the GPU host and bind-mounted it into `/root/.cache/huggingface` so cached files remain outside the disposable container.
 
@@ -142,7 +148,7 @@ Updated [Guide 02](docs/guides/02-nemotron-streaming-singapore-english.md#nemo-c
 
 Singapore English dataset preparation, adaptation/training, evaluation, true streaming, benchmarking, and scheduler submission remain incomplete. This guide stays a small POC/tutorial.
 
-## 2026-10-05 — Guide 02: NeMo version and NSC train/dev data validated
+### 2026-10-05 — Guide 02: NeMo version and NSC train/dev data validated
 
 Updated [Guide 02](docs/guides/02-nemotron-streaming-singapore-english.md) with the operator's latest progress. Preflight confirmed 214 GB available disk, approximately 14 GiB available host RAM, and an idle NVIDIA L4 with 23,034 MiB VRAM and no GPU processes.
 
@@ -154,20 +160,26 @@ The supplied dev split is reserved for a cleaner before/after comparison, separa
 
 **Next planned step:** Create deterministic POC subsets of approximately 300 training utterances and 50 dev utterances. Subset creation, manifest conversion, tag removal, baseline inference, training smoke test, fine-tuning, checkpointing, and post-training evaluation all remain incomplete. Existing one-WAV instructions remain an unexecuted reference. This remains a small POC/tutorial rather than production optimization.
 
-## 2026-10-05 — Repository guide terminology aligned
+### 2026-10-05 — Repository guide terminology aligned
 
 Moved Guide 01 into `docs/guides/` alongside Guide 02 and renamed the empty code/configuration directory to `guides/`. Updated guide titles, terminology, local links, and the README directory tree throughout the repository. Aligned README and roadmap status with the latest Guide 02 milestone; completion boundaries and recorded results are unchanged.
 
-## 2026-10-06 — Repository navigation organized
+### 2026-10-06 — Repository navigation organized
 
 Added a guide index and navigation links in both guides, simplified the repository overview, and documented where future runnable guide assets should live. Removed empty placeholder directories; planned technologies remain in the roadmap and will receive directories when actual files are added. Recorded results and guide completion boundaries are unchanged.
 
-## 2026-10-07 — Eight-layer validation agenda added
+### 2026-10-07 — Eight-layer validation agenda added
 
 Organized Guide 01 around physical GPU, PCIe enumeration, Linux kernel, NVIDIA driver, CUDA runtime/Toolkit, container runtime, PyTorch/NeMo, and application. Added the same linked agenda to the overview/index and positioned Guide 02 as the application continuation. Preserved historical section anchors for existing milestone links.
 
 Clarified that `nvidia-smi` reports driver-supported CUDA compatibility, while `nvcc` identifies the development Toolkit in the selected environment. A host Toolkit is not required for this containerized setup. NeMo import/model placement evidence is linked from Guide 02; actual GPU computation, ASR inference, training, and evaluation remain pending. This is a documentation reorganization, with no new remote validation claimed.
 
+### 2026-10-07 — Repository consistency reviewed
+
+Reviewed all repository files against the eight-layer agenda and reported guide evidence. Separated current status from historical milestone snapshots, aligned framework/cache wording, and updated historical links to the current layer sections. Clarified the host/container diagram and kept the SA troubleshooting checks distinct from agenda numbering.
+
+Documented a host data directory outside the checkout and added ignore rules for Guide 02 cache, audio, dataset directories, and archives. Dataset split separation remains a publisher-described property awaiting local overlap checks. The next step remains approximately 300 training / 50 dev utterances; no new GPU execution, inference, preprocessing, or training is claimed.
+
 ## Updating this log
 
-For each meaningful milestone, add the actual date, objective, work performed, links to evidence, observed result, blockers or lessons, and next step. Distinguish work in progress from completed and validated work.
+For each meaningful milestone, add a dated entry with the objective, work performed, links to evidence, observed result, blockers or lessons, and next step. Identify documentation sync dates and execution dates separately when known. Update **Current state** to match the latest evidence, while preserving earlier milestone snapshots. Distinguish prepared instructions from performed and validated work.

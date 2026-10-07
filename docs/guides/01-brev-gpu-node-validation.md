@@ -122,7 +122,7 @@ In this guide's containerized setup, CUDA userspace and optional development too
 
 **Operational conclusion:** The host has a working NVIDIA driver and GPU access, with no host CUDA Toolkit found by these checks. `nvidia-smi` reporting `13.2` does **not** mean CUDA Toolkit 13.2 is installed. It reports the driver's supported CUDA compatibility level, including support for applications built with Toolkits up to that level, subject to hardware and compatibility requirements.
 
-The discovery scope matters: a missing `nvcc` and absent conventional paths do not establish that every possible installation location or environment has been searched. Toolkit installations can use alternate paths, and runtime libraries can exist without the compiler. NVIDIA's [Linux installation guide](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/) covers configurable Toolkit paths and PATH setup. CUDA runtime availability and execution have not been validated in this milestone.
+The discovery scope matters: a missing `nvcc` and absent conventional paths do not establish that every possible installation location or environment has been searched. Toolkit installations can use alternate paths, and runtime libraries can exist without the compiler. NVIDIA's [Linux installation guide](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/) covers configurable Toolkit paths and PATH setup. These host discovery checks do not test CUDA runtime execution; the container and framework checks follow in layers 6 and 7.
 
 ### Container development toolchain
 
@@ -132,7 +132,7 @@ The commands below inspect image contents. They use Docker, which is validated i
 docker run --rm nvidia/cuda:13.0.0-base-ubuntu22.04 which nvcc
 ```
 
-No path was returned in the base image. The host also still has no Toolkit found in the previously checked PATH and conventional locations. Neither result indicates a broken GPU path.
+No path was returned in the base image. `which nvcc` also returns a nonzero exit status when the compiler is absent; this is expected for this image. The host likewise has no Toolkit found in the previously checked PATH and conventional locations. These compiler-discovery results do not indicate a broken GPU path.
 
 ```bash
 docker run --rm nvidia/cuda:13.0.0-devel-ubuntu22.04 which nvcc
@@ -141,7 +141,7 @@ docker run --rm nvidia/cuda:13.0.0-devel-ubuntu22.04 nvcc --version
 
 The devel image returned `/usr/local/cuda/bin/nvcc`; its compiler reported CUDA compilation tools release `13.0`, version `V13.0.48`. These inspection commands did not request GPUs: they establish toolchain presence, not compilation or GPU execution.
 
-| CUDA image role | Purpose | Evidence in this milestone |
+| CUDA image role | Purpose | Recorded evidence |
 | --- | --- | --- |
 | `base` | Minimal CUDA components | Image launched; L4 visible through `nvidia-smi`; no `nvcc` path returned |
 | `runtime` | Additional runtime libraries for executing packaged CUDA applications | Role documented; no runtime image tested |
@@ -153,7 +153,7 @@ These image roles are described in NVIDIA's [CUDA container image documentation]
 
 A common production pattern keeps the host relatively minimal, with Linux and the NVIDIA driver providing GPU access. CUDA userspace libraries, PyTorch/NeMo, and application dependencies are supplied inside containers. The host does not require a CUDA Toolkit installation for this pattern; NVIDIA explicitly documents that distinction in the [NVIDIA Container Toolkit project](https://github.com/NVIDIA/nvidia-container-toolkit).
 
-The following diagram shows the intended architecture, rather than an already validated deployment:
+The diagram separates host and container responsibilities. Container GPU access and framework/model loading have been validated; application execution remains pending.
 
 ```text
 Host
@@ -166,9 +166,9 @@ NVIDIA Container Toolkit
          ↓
 
 Container
-├── CUDA runtime / toolkit
+├── CUDA userspace / optional Toolkit
 ├── PyTorch / NeMo
-└── Training application
+└── Application
 ```
 
 NVIDIA Container Toolkit is a host-side integration component that enables a container runtime, such as Docker, to expose GPU devices and required host driver libraries to containers. It is separate from the CUDA Toolkit and its compiler. The container uses the host GPU and driver rather than replacing them. See NVIDIA's [container architecture overview](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/arch-overview.html).
@@ -252,7 +252,7 @@ torch.cuda.get_device_name(0)
 | Compatibility banner | CUDA Forward Compatibility mode enabled; CUDA 13.4 compatibility components in container userspace |
 | Host kernel driver | Remains `595.91.07` |
 
-PyTorch successfully detected CUDA and identified the L4 through the containerized stack. This milestone validates framework CUDA availability and GPU identity; no GPU tensor calculation, CUDA kernel result, training run, or benchmark was reported.
+PyTorch successfully detected CUDA and identified the L4 through the containerized stack. These checks validate framework CUDA availability and GPU identity; no GPU tensor calculation, CUDA kernel result, training run, or benchmark was reported.
 
 ### Validated access path and compatibility
 
@@ -325,13 +325,13 @@ When a customer's framework workload fails, a minimal CUDA program can isolate t
 
 ### Choose the test for the customer question
 
-| Step | Minimum check | Customer question |
-| --- | --- | --- |
-| 1 | Host `nvidia-smi` | Does the node see the GPU through its driver? |
-| 2 | Container-level `nvidia-smi` | Can the container access the GPU? |
-| 3 | `torch.cuda.is_available()` and device identity | Does PyTorch detect usable CUDA and the expected GPU? |
-| 4 | Actual customer workload | Does the real application run correctly? |
-| 5 | Targeted deeper diagnostics | Is performance limited by NCCL, storage, CPU feed, networking, or another layer? |
+| Minimum check | Customer question |
+| --- | --- |
+| Host `nvidia-smi` | Does the node see the GPU through its driver? |
+| Container-level `nvidia-smi` | Can the container access the GPU? |
+| `torch.cuda.is_available()` and device identity | Does PyTorch detect usable CUDA and the expected GPU? |
+| Actual customer workload | Does the real application run correctly? |
+| Targeted deeper diagnostics | Is performance limited by NCCL, storage, CPU feed, networking, or another layer? |
 
 An SA should not run every diagnostic every time. Use the minimum test that answers the current customer question, preferably in the customer's real execution environment. Follow failures toward the relevant layer; use deeper diagnostics when symptoms justify them. Availability and identity checks answer the access question, while a real GPU tensor computation is a useful final functional check before deciding whether to close Guide 01.
 
