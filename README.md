@@ -24,7 +24,9 @@ We work down this list, checking each layer before relying on it in the next. Gu
 | [01 — GPU Node Validation](docs/guides/01-brev-gpu-node-validation.md) | Brev access, Linux, NVIDIA drivers, CUDA containers, and PyTorch/NeMo access | Host and container GPU access, compiler inspection, and framework access validated. GPU computation remains pending. |
 | [02 — Nemotron Streaming ASR for Singapore English](docs/guides/02-nemotron-streaming-singapore-english.md) | A small NeMo speech adaptation POC/tutorial | Preflight, NeMo 3.0.0, model loading on `cuda:0`, and NSC query/dev downloads validated; persistent cache configured. Preprocessing, inference, training, and evaluation remain pending. |
 
-**Current next step:** Create deterministic Guide 02 subsets of roughly **300 training / 50 dev utterances**. No completed baseline inference, fine-tuning, evaluation, or benchmark is claimed.
+Guide 02 follows a [four-stage data strategy](docs/guides/02-nemotron-streaming-singapore-english.md#data-strategy-and-experiment-overview): train → validation → final internal test → optional external benchmark. Only train/validation sources are downloaded; a final test and external benchmark are not selected.
+
+**Current next step:** Create deterministic Guide 02 subsets of roughly **300 training / 50 validation (dev) utterances**, then verify separation and prepare manifests. No completed baseline inference, fine-tuning, evaluation, or benchmark is claimed.
 
 Browse the [guide index](docs/guides/README.md), check the [progress log](PROGRESS.md) for recorded milestones, or follow the [roadmap](ROADMAP.md) for future work.
 

@@ -8,7 +8,92 @@
 
 ## Goal and scope
 
-Build a small proof of concept (POC) and tutorial for adapting streaming automatic speech recognition (ASR) to Singapore English. The goal is a manageable learning exercise, not production-quality tuning. Model loading, dataset preparation, training, and evaluation results will be documented only after they are performed.
+Build a small proof of concept (POC) and tutorial for fine-tuning `nvidia/nemotron-3.5-asr-streaming-0.6b` on Singapore National Speech Corpus (NSC) Part 6, using an NVIDIA L4 24 GB class Brev instance. The goal is a manageable learning exercise, not production-quality tuning. Model loading, dataset preparation, training, and evaluation results are documented only after they are performed.
+
+## Data strategy and experiment overview
+
+Follow four data roles: **train → validation → test → external benchmark**. Only the NSC query and dev sources have been downloaded and extracted. The approximately 300/50 POC subsets have **not** been created. In this guide, **validation** and **dev** mean the same role; the source directory remains `nsc_dev_3h`.
+
+| Stage | Current source | POC size | Purpose | Model learns from it? | When used | Status |
+| --- | --- | ---: | --- | --- | --- | --- |
+| Train | `nsc_query_5h` | ~300 utterances | Fine-tuning | Yes, directly through gradient updates | First learning stage | Source downloaded; subset not created |
+| Validation | `nsc_dev_3h` | ~50 utterances | Baseline comparison, tuning, checkpoint/model decisions | No gradients; influences development indirectly | Before and during fine-tuning development | Source downloaded; subset not created |
+| Test | TBD | TBD | Final held-out internal evaluation | No gradients or development tuning | After validation and development decisions are finalized | Not selected |
+| External benchmark | TBD | TBD | Independent generalization check | No gradients or routine tuning | After internal test evaluation | Not selected; optional later milestone |
+
+```text
+Training data
+     │
+     ↓
+Fine-tune model: learn weights through gradient updates
+     │
+     ↓
+Validation data
+     ├── compare baseline vs fine-tuned model
+     ├── tune development choices
+     ├── choose checkpoint
+     └── finalize model/configuration
+     │
+     ↓
+Test data
+     └── final held-out internal evaluation
+     │
+     ↓
+External benchmark
+     └── independent generalization check
+```
+
+Capture baseline **word error rate (WER)** on validation before the first fine-tuning run. Return to the same validation subset to compare checkpoints and development choices. Training and validation can repeat during development; final test evaluation comes after those decisions are settled.
+
+### Available sources: origin and contents
+
+Both sources are NSC Part 6 extracts distributed through [pengyizhou/IALP-2026-data](https://huggingface.co/datasets/pengyizhou/IALP-2026-data). The intended experiment roles below are our POC choices; the source name `query` does not prevent us from using that subset for fine-tuning.
+
+| Source | Full source size | Contents and intended use |
+| --- | --- | --- |
+| `nsc_query_5h` | 2,289 utterances; ~5 hours; ~214 MB, recorded as `214M` by `du -sh` | `.flac` audio and `manifest.jsonl`; source for ~300 training utterances |
+| `nsc_dev_3h` | 1,316 utterances; ~3 hours | `.flac` audio and `manifest.jsonl`; source for ~50 validation utterances; transcripts may contain `<v-noise>` |
+
+Each JSONL line describes an utterance: `id` identifies it, `speaker` identifies the speaker, `duration` gives seconds, `text` is the reference transcript, and `audio` is a relative path into `audio/`. The download commands and example records are below. Hour totals are approximate source descriptions, not independently summed durations. The small subset sizes are planned counts, not measured subset hours or proof of production readiness.
+
+### Direct learning versus development decisions
+
+Training data changes model weights through backpropagation. Validation data must never enter gradient updates, but its results still influence the final system indirectly: an engineer may choose a learning rate, checkpoint, normalization rule, or decoding setting because it improves validation WER. Finalize those choices using validation, and record them before testing.
+
+Test results are for evaluating the finalized internal result. If we repeatedly tune choices based on test results, that set effectively becomes another validation set and loses its role as an independent final check. A new untouched holdout would be needed for a fresh final evaluation. See the [scikit-learn evaluation guidance](https://scikit-learn.org/stable/modules/cross_validation.html) for this distinction.
+
+### What results can tell us
+
+- **Train:** Lower training loss shows better fit to training examples; it does not establish performance on unseen speech.
+- **Validation:** WER on the fixed ~50 utterances supports baseline comparisons and development decisions under recorded scoring rules. It is a small, development-influenced result, not an unbiased final estimate for all Singapore English.
+- **Test:** A properly separated, untouched set evaluates the finalized system on held-out internal data. Conclusions apply to that set's size and distribution; they do not establish production performance or generalization to every customer.
+- **External benchmark:** A separate source, corpus, or real-world target distribution checks whether improvements extend beyond the data used during development. Results support conclusions about that benchmark, not universal generalization. Keep it independent of the internal train/validation/test workflow and out of routine tuning.
+
+### Later data decisions — TODO
+
+- **Final test:** No dedicated test set is selected or prepared. After validation choices are finalized, select and verify a suitable holdout with audio and reference transcripts, separated from POC train/validation speakers and utterance IDs. Record its source and size, then evaluate the fixed model/configuration without tuning on its results. If reserving data earlier, keep it untouched during development.
+- **External benchmark:** No benchmark is selected or prepared. Later, optionally choose independent audio and reference transcripts from a different source, corpus, or target distribution, document its scope, and evaluate after the internal test. Its source, size, and scoring rules remain TBD.
+
+## Guide 02 workflow agenda
+
+Node preflight and model loading are recorded below. Follow this application workflow next; none of the future execution steps is complete.
+
+1. Understand the four data roles: train, validation, test, external benchmark.
+2. Inspect the available NSC data — sources downloaded and example records inspected; full checks pending.
+3. Create deterministic POC train/validation subsets — approximately 300/50 utterances, not created.
+4. Verify speaker and utterance-ID separation before inference or training; revisit when selecting a test set.
+5. Define transcript normalization, including treatment of annotation tags; freeze scoring rules for comparisons.
+6. Convert to NeMo manifests with audio paths valid inside the container.
+7. Run baseline inference on validation and record WER.
+8. Fine-tune on train only, starting with a training smoke test on the L4.
+9. Evaluate checkpoints/model choices on validation; record any development changes and compare under the same scoring rules.
+10. Finalize the model/configuration: checkpoint, normalization, and decoding settings.
+11. Select/verify and use a held-out test set for final internal evaluation — TBD.
+12. Optionally evaluate an external benchmark after the internal test — TBD.
+
+Perform data preparation in the SSH-connected GPU host's working directory, outside Git. Download there and bind-mount host data into the container; a laptop path is not automatically available on the remote node. Record the source revision/checksum, fixed selection rule or seed, selected IDs, overlap-check results, normalization rules, container/model versions, and run settings. Keep validation IDs fixed; when scoring rules change during development, rescore both models consistently. These records remain to be produced.
+
+This POC keeps the experiment small for learning. A customer deployment would choose data coverage and evaluation sizes around actual users, audio conditions, and acceptance criteria; ~300/50 utterances are not a production recommendation. WER checks recognition quality, while streaming behavior, latency, throughput, and scheduler integration remain separate future work.
 
 ## Node preflight — complete
 
@@ -96,7 +181,7 @@ wc -l nsc_query_5h/manifest.jsonl
 du -sh nsc_query_5h
 ```
 
-Reported results: **2,289 manifest records** and **214M** extracted directory size (`du -sh`). The directory name is `nsc_query_5h`; its duration was not independently summed in this milestone.
+Reported results: **2,289 manifest records** and **214M** extracted directory size (`du -sh`). The source contains approximately **5 hours** of speech; its duration was not independently summed in this milestone.
 
 ```text
 nsc_query_5h/
@@ -121,7 +206,7 @@ tar xzf nsc-dev.tar.gz
 wc -l nsc_dev_3h/manifest.jsonl
 ```
 
-Reported result: **1,316 manifest records**.
+Reported result: **1,316 manifest records**, with approximately **3 hours** of speech in the source. Its duration was not independently summed in this milestone. This is our validation source, not an already selected final test set.
 
 Example development record (ID and audio filename shortened):
 
@@ -129,17 +214,17 @@ Example development record (ID and audio filename shortened):
 {"id":"...","speaker":"00017","duration":6.24,"text":"okay sure <v-noise> uh good afternoon may i have your contact number in case the line like get uh disconnected","audio":"audio/...flac"}
 ```
 
-The inspected train/dev records share the fields `id`, `speaker`, `duration`, `text`, and `audio`, with relative FLAC paths. These source manifests have not yet been converted to NeMo format. Development transcripts can contain annotation tags such as `<v-noise>`; minimal preprocessing will strip these tags, but no cleanup has been performed yet.
+The inspected train/validation records share the fields `id`, `speaker`, `duration`, `text`, and `audio`, with relative FLAC paths. These source manifests have not yet been converted to NeMo format. Validation transcripts can contain annotation tags such as `<v-noise>`; tag removal is planned as part of transcript normalization, whose rules have not yet been defined or applied.
 
 ### Why keep development data separate?
 
-Evaluate on utterances and speakers not used for fine-tuning. Reserve the supplied dev split for evaluation and checkpoint selection; use the query split for fine-tuning. The [dataset publisher](https://huggingface.co/datasets/pengyizhou/IALP-2026-data#split-construction-nsc) describes the NSC splits as speaker-disjoint. Local speaker and utterance overlap checks remain pending; the two example records alone do not verify that property.
+Evaluate development choices on utterances and speakers not used for gradient updates. Reserve the supplied dev split for validation, baseline/fine-tuned WER comparison, and checkpoint selection; use the query split for fine-tuning. The [dataset publisher](https://huggingface.co/datasets/pengyizhou/IALP-2026-data#split-construction-nsc) describes the NSC splits as speaker-disjoint. Local speaker and utterance-ID overlap checks remain pending; the two example records alone do not verify that property. Validation influences development choices, so it does not replace the later final test.
 
 ## Next: create tiny deterministic POC subsets — planned
 
-The next step is to select roughly **300 training utterances** from the query split and **50 development utterances** from the separate dev split, using a fixed selection rule or seed so the experiment can be reproduced. This step has not been executed.
+The next execution step is to select roughly **300 training utterances** from the query split and **50 validation utterances** from the separate dev split, using a fixed selection rule or seed so the experiment can be reproduced. Record selected IDs, then verify speaker and utterance-ID separation before using the subsets. This step has not been executed.
 
-Tiny subset creation, NeMo manifest conversion, annotation-tag removal, baseline inference, the training smoke test, fine-tuning, checkpointing, and post-training evaluation all remain incomplete. The aim remains a small POC/tutorial, not production optimization.
+Tiny subset creation, overlap verification, transcript normalization, NeMo manifest conversion, baseline inference, the training smoke test, fine-tuning, checkpointing, and evaluation all remain incomplete. Final test and external benchmark selection remain TODOs. Follow the workflow agenda above; the aim remains a small POC/tutorial, not production optimization.
 
 ## Single-file inference reference — not yet executed
 
@@ -224,14 +309,22 @@ Success means the process exits normally, reports `Model device: cuda:0`, and pr
 | Single-file WAV inference | Instructions prepared; GPU execution and transcript pending |
 | NSC training/query download and extraction | Complete: 2,289 records, 214M |
 | NSC dev download and extraction | Complete: 1,316 records |
-| Tiny deterministic training/dev subsets | Not yet complete: approximately 300 / 50 planned |
+| Four-stage data strategy and workflow | Documented; execution remains pending |
+| Tiny deterministic train/validation subsets | Not yet complete: approximately 300 / 50 planned |
+| Speaker-overlap verification | Not yet complete |
+| Utterance-ID overlap verification | Not yet complete |
+| Transcript normalization | Rules not yet defined or applied |
 | NeMo manifest conversion | Not yet complete |
 | Annotation-tag removal | Not yet complete |
-| Baseline inference | Not yet complete |
+| Baseline inference / validation WER | Not yet complete |
 | Training smoke test | Not yet complete |
 | Fine-tuning | Not yet complete |
 | Checkpointing | Not yet complete |
-| Post-training evaluation / benchmarking | Not yet complete |
+| Checkpoint/model comparison on validation | Not yet complete |
+| Final model/configuration | Not yet finalized |
+| Final held-out internal test | Not selected; evaluation pending after development choices are finalized |
+| External benchmark | Not selected; optional later milestone after internal test |
+| Performance benchmarking | Not yet complete |
 | True streaming inference | Not yet complete |
 
-Next, create the tiny deterministic training/dev subsets. Downloads and source-manifest inspection are complete; preprocessing and baseline inference remain pending. The eventual infrastructure progression remains simple Docker validation → actual Nemotron inference → streaming inference → package the workload cleanly → submit the equivalent workload through SLURM. Streaming and scheduler work remain future milestones.
+Next, create the tiny deterministic train/validation subsets, then verify separation, define normalization, and convert manifests before baseline inference on validation. The four data roles organize later fine-tuning, model selection, internal test, and optional external evaluation; no final test or benchmark is selected. The eventual infrastructure progression remains simple Docker validation → actual Nemotron inference → streaming inference → package the workload cleanly → submit the equivalent workload through SLURM. Streaming and scheduler work remain future milestones.

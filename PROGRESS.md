@@ -2,15 +2,16 @@
 
 ## Current state
 
-- **Documentation:** [Guide 01](docs/guides/01-brev-gpu-node-validation.md) covers node validation, CUDA host/container architecture, Docker/NVIDIA integration, CUDA image inspection, and PyTorch CUDA access. [Guide 02](docs/guides/02-nemotron-streaming-singapore-english.md) documents preflight and Nemotron model loading on GPU, with NSC train/dev downloads and pending single-file inference instructions for a small Singapore English ASR POC.
-- **Guide 02:** Preflight, NeMo 3.0.0 container checks, model loading, persistent cache configuration, model placement on `cuda:0`, and NSC query/dev downloads and extraction complete. Tiny subsets, preprocessing, baseline inference, training, checkpointing, evaluation, and true streaming remain incomplete.
+- **Documentation:** [Guide 01](docs/guides/01-brev-gpu-node-validation.md) covers node validation, CUDA host/container architecture, Docker/NVIDIA integration, CUDA image inspection, and PyTorch CUDA access. [Guide 02](docs/guides/02-nemotron-streaming-singapore-english.md) documents preflight, model loading, NSC source downloads, and a four-stage experiment overview for a small Singapore English ASR POC. Single-file inference instructions remain unexecuted.
+- **Guide 02:** Preflight, NeMo 3.0.0 container checks, model loading, persistent cache configuration, model placement on `cuda:0`, and NSC query/dev downloads and extraction complete. Train/validation subsets, speaker/utterance-ID overlap verification, normalization, NeMo manifest conversion, baseline inference, training, checkpointing, evaluation, and true streaming remain incomplete.
+- **Guide 02 data roles:** `nsc_query_5h` is the train source; `nsc_dev_3h` is validation (dev), used for comparisons and development decisions without gradients. A final internal test and external benchmark are not selected. [Train → validation → test → external benchmark](docs/guides/02-nemotron-streaming-singapore-english.md#data-strategy-and-experiment-overview) is documented as the intended workflow, not completed execution.
 - **Hands-on guides:** Guide 01 in progress; cloud connectivity, Linux host, PCIe GPU visibility, and NVIDIA driver communication validated. Host Toolkit discovery complete for the checked PATH and conventional locations; no installation found.
 - **Docker, NVIDIA container integration, container GPU passthrough, CUDA base image launch, and CUDA devel image / `nvcc` inspection:** Complete for the reported checks.
 - **PyTorch NGC container, CUDA availability, GPU identity, and interactive/one-liner workflows:** Validated or documented for the reported scope; interactive execution reported.
 - **Actual GPU inference/computation, real training, NeMo training, distributed training/NCCL, and performance benchmarking:** Not yet complete.
 - **Training runs, application deployments, and benchmarks:** None documented.
 
-**Current next step:** Create deterministic Guide 02 subsets of approximately **300 training / 50 dev utterances**. Subset creation, NeMo manifest conversion, annotation-tag cleanup, and baseline inference remain pending.
+**Current next step:** Create deterministic Guide 02 subsets of approximately **300 training / 50 validation (dev) utterances**. Then verify speaker and utterance-ID separation, define normalization, convert NeMo manifests, and run baseline validation WER. Every execution step remains pending.
 
 ## Milestone history
 
@@ -179,6 +180,12 @@ Clarified that `nvidia-smi` reports driver-supported CUDA compatibility, while `
 Reviewed all repository files against the eight-layer agenda and reported guide evidence. Separated current status from historical milestone snapshots, aligned framework/cache wording, and updated historical links to the current layer sections. Clarified the host/container diagram and kept the SA troubleshooting checks distinct from agenda numbering.
 
 Documented a host data directory outside the checkout and added ignore rules for Guide 02 cache, audio, dataset directories, and archives. Dataset split separation remains a publisher-described property awaiting local overlap checks. The next step remains approximately 300 training / 50 dev utterances; no new GPU execution, inference, preprocessing, or training is claimed.
+
+### 2026-10-07 — Guide 02 data strategy and experiment overview documented
+
+Added the four data roles near the beginning of [Guide 02](docs/guides/02-nemotron-streaming-singapore-english.md#data-strategy-and-experiment-overview), with a sequential diagram, source/size tables, allowed learning and interpretation boundaries, and a 12-step workflow agenda. Training updates weights directly; validation influences model/configuration choices indirectly without backpropagation. Final test use follows finalized development decisions; repeatedly tuning on test results turns that set into validation.
+
+Recorded the known NSC source counts and approximate sizes while keeping ~300/~50 subsets uncreated. Speaker/utterance-ID verification, normalization, NeMo manifests, baseline inference, training, checkpointing, and evaluation remain pending. Final test selection and optional external benchmark selection are explicit later TODOs. Added reproducibility and remote-host data-path guidance; no new datasets or GPU execution are claimed.
 
 ## Updating this log
 

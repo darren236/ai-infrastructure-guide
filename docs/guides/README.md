@@ -27,9 +27,11 @@ Read the guide down the eight-layer agenda:
 
 This continues the agenda at **layer 8: application**, following NeMo framework/model-loading checks in layer 7. Build a small POC/tutorial using the NeMo Speech container, a persistent model cache, and separate NSC query/dev data.
 
+[Data strategy and workflow](02-nemotron-streaming-singapore-english.md#data-strategy-and-experiment-overview): train → validation → final internal test → optional external benchmark. The query source is for gradient updates; dev is validation for development choices. Test and external benchmark sources remain unselected.
+
 **Completed:** Node preflight, NeMo 3.0.0 checks, model loading on `cuda:0`, cache configuration, and dataset downloads/extraction.
 
-**Next:** Deterministic subsets of approximately 300 training utterances and 50 dev utterances. Manifest conversion, tag cleanup, baseline inference, training, checkpointing, and evaluation remain pending. The guide includes a one-WAV inference reference that has not been executed on the GPU node.
+**Next:** Create deterministic subsets of approximately 300 training utterances and 50 validation (dev) utterances. Verify speaker/utterance-ID separation, define normalization, convert manifests, and capture baseline validation WER before fine-tuning. These steps, checkpointing, and evaluation remain pending. The one-WAV reference is unexecuted; final test use follows settled development decisions, with external evaluation as a later option.
 
 ## Future guides
 
