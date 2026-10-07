@@ -3,16 +3,16 @@
 ## Current state
 
 - **Documentation:** [Guide 01](docs/guides/01-brev-gpu-node-validation.md) covers node validation, CUDA host/container architecture, Docker/NVIDIA integration, CUDA image inspection, and PyTorch CUDA access. [Guide 02](docs/guides/02-nemotron-streaming-singapore-english.md) documents preflight, model loading, NSC source downloads, and a four-stage experiment overview for a small Singapore English ASR POC. Single-file inference instructions remain unexecuted.
-- **Guide 02:** Preflight, NeMo 3.0.0 container checks, model loading, persistent cache configuration, model placement on `cuda:0`, and NSC query/dev downloads and extraction complete. Full source-manifest checks, speaker/utterance-ID overlap verification, annotation inventory/counts, train/validation subsets, normalization, NeMo manifest conversion, baseline inference, training, checkpointing, evaluation, and true streaming remain incomplete.
-- **Guide 02 data roles:** `nsc_query_5h` is train and `nsc_dev_3h` is validation (dev), both from the NSC Part 6 train partition using different speaker sets. The plan now uses `nsc_test` from the official NSC test partition and `gigaspeech_test` for external/OOD evaluation. [Train → validation → freeze model/configuration → NSC test → GigaSpeech](docs/guides/02-nemotron-streaming-singapore-english.md#data-strategy-and-experiment-overview) remains planned execution; test/benchmark preparation and local overlap checks are unvalidated.
-- **Guide 02 annotations:** The operator reports `<v-noise>` in both train and validation transcripts. Other annotation types have not been inventoried; no final normalization rule is selected. Original source manifests must remain unchanged while derived files are prepared.
+- **Guide 02:** Preflight, NeMo 3.0.0 container checks, model loading, persistent cache configuration, model placement on `cuda:0`, NSC query/dev downloads, source counts, train/validation speaker/utterance-ID separation, and annotation inventory/counts complete. Referenced-audio integrity, train/validation subsets, normalization, NeMo manifest conversion, baseline inference, training, checkpointing, evaluation, and true streaming remain incomplete.
+- **Guide 02 data roles:** `nsc_query_5h` is train and `nsc_dev_3h` is validation (dev), both from the NSC Part 6 train partition. Local checks found 111/64 speakers, zero shared speakers, and zero shared utterance IDs. [Train → validation → freeze model/configuration → NSC test → GigaSpeech](docs/guides/02-nemotron-streaming-singapore-english.md#data-strategy-and-experiment-overview) remains planned execution; test/benchmark preparation and separation from `nsc_test` remain unvalidated.
+- **Guide 02 annotations:** Both complete manifests were audited for `<v-noise>`, `<unk>`, and `<noise>`; 511 train and 286 validation records contain tags. No final normalization/filtering rule is selected. Manual listening/relabeling of individual `<unk>` occurrences is excluded from this POC; original source manifests remain unchanged. Audio-based data-quality review is future work.
 - **Hands-on guides:** Guide 01 in progress; cloud connectivity, Linux host, PCIe GPU visibility, and NVIDIA driver communication validated. Host Toolkit discovery complete for the checked PATH and conventional locations; no installation found.
 - **Docker, NVIDIA container integration, container GPU passthrough, CUDA base image launch, and CUDA devel image / `nvcc` inspection:** Complete for the reported checks.
 - **PyTorch NGC container, CUDA availability, GPU identity, and interactive/one-liner workflows:** Validated or documented for the reported scope; interactive execution reported.
 - **Actual GPU inference/computation, real training, NeMo training, distributed training/NCCL, and performance benchmarking:** Not yet complete.
 - **Training runs, application deployments, and benchmarks:** None documented.
 
-**Current next step:** Verify Guide 02 source manifests, speaker/utterance-ID separation, and annotation tokens on the compute node. Then create deterministic **~300 train / ~50 validation** subsets, define/apply normalization to derived data, convert NeMo manifests, and run baseline validation WER. Every execution step remains pending.
+**Current next step:** Create deterministic Guide 02 **~300 train / ~50 validation** subsets and recheck their separation. Then define/apply normalization to derived data, convert NeMo manifests, and run baseline validation WER. These steps remain pending.
 
 ## Milestone history
 
@@ -205,6 +205,14 @@ Documented that query/dev come from different speaker sets in the NSC train part
 Recorded the operator's finding that `<v-noise>` occurs in both training/query and validation/dev transcripts as a vocal/non-lexical noise annotation. A full annotation inventory and counts remain pending; no final removal or replacement rule is selected. This supersedes the earlier tag-removal plan.
 
 Aligned Guide 02 and the README agenda: source checks → speaker/utterance-ID separation → annotation inspection/counts → deterministic ~300/~50 subsets → normalization policy → derived NeMo manifests → baseline validation → train → validation/model selection → freeze → `nsc_test` → `gigaspeech_test`. Original manifests remain untouched. All preparation, inference, training, and evaluation steps in this sequence are planned, with no new node execution claimed.
+
+### 2026-10-07 — Guide 02 train/validation separation and annotation audit verified
+
+Recorded the operator's read-only Brev-node checks of `/data/nsc/nsc_query_5h/manifest.jsonl` and `/data/nsc/nsc_dev_3h/manifest.jsonl`: 2,289/1,316 records, 111/64 speakers, zero speaker overlap, and zero utterance-ID overlap. This independently confirms train/dev separation, without claiming local NSC test verification.
+
+The complete-manifest annotation audit found 511/286 tagged records. Train/validation token occurrences: `<v-noise>` 598/345, `<unk>` 145/104, and `<noise>` 49/24. Checks used reusable scripts in the pinned NeMo Speech container with source data mounted read-only, without installing host Python or modifying the dataset.
+
+Documented the intended annotation meanings and the unverified possibility that some `<unk>` labels could hide identifiable local speech. No audio listening has confirmed that hypothesis. Manual listening/relabeling is outside this reproducible POC; a reviewed derived dataset is future work. No final normalization/filtering rule is selected. Subsets, NeMo conversion, inference, and training remain unperformed.
 
 ## Updating this log
 
