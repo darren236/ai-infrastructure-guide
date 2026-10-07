@@ -3,16 +3,17 @@
 ## Current state
 
 - **Documentation:** [Guide 01](docs/guides/01-brev-gpu-node-validation.md) covers node validation, CUDA host/container architecture, Docker/NVIDIA integration, CUDA image inspection, and PyTorch CUDA access. [Guide 02](docs/guides/02-nemotron-streaming-singapore-english.md) documents preflight, model loading, NSC source downloads, and a four-stage experiment overview for a small Singapore English ASR POC. Single-file inference instructions remain unexecuted.
-- **Guide 02:** Preflight, NeMo 3.0.0 container checks, model loading, persistent cache configuration, model placement on `cuda:0`, NSC query/dev downloads, source counts, train/validation speaker/utterance-ID separation, and annotation inventory/counts complete. Referenced-audio integrity, train/validation subsets, normalization, NeMo manifest conversion, baseline inference, training, checkpointing, evaluation, and true streaming remain incomplete.
+- **Guide 02:** Preflight, NeMo 3.0.0 container checks, model loading, persistent cache configuration, model placement on `cuda:0`, NSC query/dev downloads, source counts, train/validation speaker/utterance-ID separation, annotation inventory/counts, `<unk>` eligibility analysis, and POC annotation-handling decision complete. Referenced-audio integrity, train/validation subsets, normalization output, NeMo manifest conversion, baseline inference, training, checkpointing, evaluation, and true streaming remain incomplete.
 - **Guide 02 data roles:** `nsc_query_5h` is train and `nsc_dev_3h` is validation (dev), both from the NSC Part 6 train partition. Local checks found 111/64 speakers, zero shared speakers, and zero shared utterance IDs. [Train → validation → freeze model/configuration → NSC test → GigaSpeech](docs/guides/02-nemotron-streaming-singapore-english.md#data-strategy-and-experiment-overview) remains planned execution; test/benchmark preparation and separation from `nsc_test` remain unvalidated.
-- **Guide 02 annotations:** Both complete manifests were audited for `<v-noise>`, `<unk>`, and `<noise>`; 511 train and 286 validation records contain tags. No final normalization/filtering rule is selected. Manual listening/relabeling of individual `<unk>` occurrences is excluded from this POC; original source manifests remain unchanged. Audio-based data-quality review is future work.
+- **Guide 02 annotations:** Both complete manifests were audited for `<v-noise>`, `<unk>`, and `<noise>`; 511 train and 286 validation records contain tags. The POC decision excludes whole `<unk>` utterances, keeps noise-tagged utterances for later token removal, and preserves local speech. Manual listening/relabeling is excluded; original manifests remain unchanged. Policy application and audio-based data-quality review remain future work.
+- **Guide 02 eligibility:** Read-only analysis found 131/91 records containing `<unk>`. Excluding them would leave 2,158 train records / 4.59 h and 1,225 validation records / 2.71 h, enough for the planned ~300/~50 subsets. These are estimated eligible pools; no filtered dataset or subset has been created.
 - **Hands-on guides:** Guide 01 in progress; cloud connectivity, Linux host, PCIe GPU visibility, and NVIDIA driver communication validated. Host Toolkit discovery complete for the checked PATH and conventional locations; no installation found.
 - **Docker, NVIDIA container integration, container GPU passthrough, CUDA base image launch, and CUDA devel image / `nvcc` inspection:** Complete for the reported checks.
 - **PyTorch NGC container, CUDA availability, GPU identity, and interactive/one-liner workflows:** Validated or documented for the reported scope; interactive execution reported.
 - **Actual GPU inference/computation, real training, NeMo training, distributed training/NCCL, and performance benchmarking:** Not yet complete.
 - **Training runs, application deployments, and benchmarks:** None documented.
 
-**Current next step:** Create deterministic Guide 02 **~300 train / ~50 validation** subsets and recheck their separation. Then define/apply normalization to derived data, convert NeMo manifests, and run baseline validation WER. These steps remain pending.
+**Current next step:** Create deterministic Guide 02 **~300 train / ~50 validation** subsets from eligible utterances and recheck their separation. Then finish normalization and apply the annotation policy to derived data, convert NeMo manifests, and run baseline validation WER. These steps remain pending.
 
 ## Milestone history
 
@@ -219,6 +220,14 @@ Documented the intended annotation meanings and the unverified possibility that 
 Added the supplied, node-validated [`check_split_overlap.py`](scripts/guide-02/check_split_overlap.py) and [`inspect_transcript_tags.py`](scripts/guide-02/inspect_transcript_tags.py) unchanged under `scripts/guide-02/`. Guide 02 links to the helpers, documents runtime manifest arguments and read-only NeMo-container reproduction commands, and preserves the verified Brev results.
 
 This publishes existing validation tools and evidence; no new node run is claimed. Subset creation, normalization, NeMo conversion, inference, and training remain pending. `check_poc_eligibility.py` is not added because it has not been validated on the node.
+
+### 2026-10-07 — Guide 02 POC eligibility analysis and annotation policy validated
+
+Added the supplied [`check_poc_eligibility.py`](scripts/guide-02/check_poc_eligibility.py) unchanged. Recorded the exact Brev-host command: the pinned NeMo container mounted `/home/ubuntu/data/nsc` and `/home/ubuntu/work/nemotron-poc` read-only as `/data/nsc` and `/work`. Manifest paths are runtime arguments; this CPU/data-integrity task needs no GPU access.
+
+Observed train: 2,289 records / 5.01 h, with 131 `<unk>` records / 0.42 h; 2,158 / 4.59 h would remain. Validation: 1,316 / 3.02 h, with 91 `<unk>` records / 0.31 h; 1,225 / 2.71 h would remain. Hours sum manifest durations; the read-only check creates no filtered output.
+
+Marked overlap verification, annotation enumeration, eligibility analysis, and the POC handling decision complete. The policy excludes whole `<unk>` utterances, keeps `<noise>`/`<v-noise>` utterances for later token removal, retains local speech, and preserves originals. This is a pragmatic POC choice, not a bad-data judgment; manual audio review remains future work. Subsets, normalized output, NeMo conversion, baseline inference, training, checkpointing, and test/external evaluation remain pending.
 
 ## Updating this log
 

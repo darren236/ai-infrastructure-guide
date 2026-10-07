@@ -34,9 +34,9 @@ Start with **Guide 01** to understand and validate the GPU stack, then follow **
 
 1. [Verify source manifests on the node](docs/guides/02-nemotron-streaming-singapore-english.md#split-construction-and-hands-on-verification) — counts checked; referenced-audio integrity not yet reported.
 2. [Verify speaker and utterance-ID separation](docs/guides/02-nemotron-streaming-singapore-english.md#split-construction-and-hands-on-verification) — complete for train/validation; NSC test checks pending.
-3. [Inspect and count transcript annotation tokens](docs/guides/02-nemotron-streaming-singapore-english.md#transcript-annotation-audit--complete) — complete for both source manifests.
-4. [Create deterministic POC train/validation subsets](docs/guides/02-nemotron-streaming-singapore-english.md#next-data-preparation-on-the-compute-node--planned) — approximately 300/50 utterances.
-5. Define an explicit transcript-normalization policy and apply it reproducibly to derived data.
+3. [Inspect and count transcript annotation tokens](docs/guides/02-nemotron-streaming-singapore-english.md#transcript-annotation-audit--complete) and [measure POC eligibility](docs/guides/02-nemotron-streaming-singapore-english.md#poc-eligibility-impact--complete) — complete; annotation policy decided.
+4. [Create deterministic POC train/validation subsets](docs/guides/02-nemotron-streaming-singapore-english.md#next-data-preparation-on-the-compute-node--planned) — approximately 300/50 eligible utterances.
+5. Finalize remaining normalization rules and apply the chosen annotation policy reproducibly to derived data.
 6. Convert derived data to NeMo manifests with container-visible audio paths.
 7. Run baseline inference on validation and record WER.
 8. Fine-tune on train only, starting with a training smoke test.
@@ -45,9 +45,9 @@ Start with **Guide 01** to understand and validate the GPU stack, then follow **
 11. Evaluate `nsc_test` for final held-out Singapore-English results.
 12. Evaluate `gigaspeech_test` for external/OOD generalization and regressions after the NSC test.
 
-**Status:** Node preflight, NeMo 3.0.0/model loading on `cuda:0`, cache configuration, and NSC query/dev downloads are complete. Train/validation separation is verified: 111/64 speakers, with zero shared speakers or utterance IDs. Both complete manifests were audited for `<v-noise>`, `<unk>`, and `<noise>`. Subset creation and steps 5–12 remain pending; normalization policy is undecided. NSC test and GigaSpeech preparation/evaluation remain unvalidated.
+**Status:** Node preflight, NeMo 3.0.0/model loading on `cuda:0`, cache configuration, and NSC query/dev downloads are complete. Train/validation separation is verified: 111/64 speakers, with zero shared speakers or utterance IDs. Tag enumeration and `<unk>` eligibility analysis are complete. The POC decision excludes whole `<unk>` utterances, keeps noise-tagged utterances for later token removal, and retains local speech. Subsets, normalized output, and steps 6–12 remain pending; NSC test/GigaSpeech preparation and evaluation are unvalidated.
 
-**Current next step:** Create deterministic **~300 training / ~50 validation** subsets, then define normalization and convert derived NeMo manifests. Preserve original manifests; manual `<unk>` relabeling is excluded from this POC. The optional one-WAV smoke test is documented in Guide 02's appendix and remains unexecuted.
+**Current next step:** Create deterministic **~300 training / ~50 validation** subsets from the estimated eligible pools of **2,158 / 1,225 records**, then finish normalization and convert derived NeMo manifests. Preserve original manifests; manual `<unk>` relabeling is excluded from this POC. The optional one-WAV smoke test remains unexecuted.
 
 ## Future guides
 
@@ -64,7 +64,8 @@ ai-infrastructure-guide/
 ├── scripts/
 │   └── guide-02/
 │       ├── check_split_overlap.py
-│       └── inspect_transcript_tags.py
+│       ├── inspect_transcript_tags.py
+│       └── check_poc_eligibility.py
 └── docs/
     └── guides/
         ├── README.md         # Short directory index
@@ -72,7 +73,7 @@ ai-infrastructure-guide/
         └── 02-nemotron-streaming-singapore-english.md
 ```
 
-The [written guides](docs/guides/README.md) contain commands, architecture explanations, and recorded evidence. Guide 02's [overlap check](scripts/guide-02/check_split_overlap.py) and [annotation audit](scripts/guide-02/inspect_transcript_tags.py) are reusable helpers validated on the node. The [progress log](PROGRESS.md) keeps historical milestones; the [roadmap](ROADMAP.md) holds future topics. Add scripts or configuration when an actual guide step needs them, and link from that guide.
+The [written guides](docs/guides/README.md) contain commands, architecture explanations, and recorded evidence. Guide 02's [overlap check](scripts/guide-02/check_split_overlap.py), [annotation audit](scripts/guide-02/inspect_transcript_tags.py), and [POC eligibility check](scripts/guide-02/check_poc_eligibility.py) are reusable helpers validated on the node. The [progress log](PROGRESS.md) keeps historical milestones; the [roadmap](ROADMAP.md) holds future topics. Add scripts or configuration when an actual guide step needs them, and link from that guide.
 
 ## Documentation standard
 
