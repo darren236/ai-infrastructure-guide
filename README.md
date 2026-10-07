@@ -2,7 +2,22 @@
 
 Practical AI infrastructure guides and a technical portfolio demonstrating NVIDIA Solutions Architect skills: GPU stack validation, containerized workloads, troubleshooting, and clear explanations of architecture and operational tradeoffs.
 
-## Start here
+## Agenda: from physical GPU to application
+
+We work down this list, checking each layer before relying on it in the next. Guide 01 explains layers 1–7; Guide 02 continues with the Nemotron ASR application at layer 8.
+
+1. [Physical GPU](docs/guides/01-brev-gpu-node-validation.md#1-physical-gpu) — identify the provisioned GPU.
+2. [PCIe enumeration](docs/guides/01-brev-gpu-node-validation.md#2-pcie-enumeration) — check device visibility with `lspci`.
+3. [Linux kernel](docs/guides/01-brev-gpu-node-validation.md#3-linux-kernel) — identify kernel, OS, and architecture.
+4. [NVIDIA driver](docs/guides/01-brev-gpu-node-validation.md#4-nvidia-driver) — use `nvidia-smi`; its CUDA field reports driver compatibility, not the installed Toolkit/runtime version.
+5. [CUDA runtime / Toolkit](docs/guides/01-brev-gpu-node-validation.md#5-cuda-runtime--toolkit) — inspect `nvcc` in a devel container; a host Toolkit is not required for this setup.
+6. [Container runtime](docs/guides/01-brev-gpu-node-validation.md#6-container-runtime) — validate `docker info` and GPU-enabled `docker run`.
+7. [PyTorch / NeMo](docs/guides/01-brev-gpu-node-validation.md#7-pytorch--nemo) — run framework containers and check CUDA access/model placement.
+8. [Application](docs/guides/01-brev-gpu-node-validation.md#8-application) — process real inputs and verify the output.
+
+**Where we are:** The recorded checks reach framework access and Nemotron model loading. Layer 8 data preparation is underway; actual inference, training, and evaluation remain pending. During customer troubleshooting, use the minimum check that answers the current question.
+
+## Guides
 
 | Guide | Focus | Current progress |
 | --- | --- | --- |

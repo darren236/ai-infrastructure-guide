@@ -8,10 +8,16 @@
 
 Validate the infrastructure from host access through driver, container, and framework checks on an NVIDIA L4.
 
-- [Brev connectivity, Linux host, PCIe, and driver](01-brev-gpu-node-validation.md#part-1-brev-connectivity-linux-host-pcie-and-nvidia-driver)
-- [CUDA host vs container architecture](01-brev-gpu-node-validation.md#part-2-cuda-host-vs-container-architecture)
-- [Docker, container GPU access, and CUDA development tools](01-brev-gpu-node-validation.md#part-3-docker-nvidia-container-gpu-path-and-cuda-devel-image)
-- [PyTorch CUDA access](01-brev-gpu-node-validation.md#part-4-pytorch-cuda-access-through-an-nvidia-ngc-container)
+Read the guide down the eight-layer agenda:
+
+1. [Physical GPU](01-brev-gpu-node-validation.md#1-physical-gpu)
+2. [PCIe enumeration — `lspci`](01-brev-gpu-node-validation.md#2-pcie-enumeration)
+3. [Linux kernel](01-brev-gpu-node-validation.md#3-linux-kernel)
+4. [NVIDIA driver — `nvidia-smi`](01-brev-gpu-node-validation.md#4-nvidia-driver)
+5. [CUDA runtime / Toolkit — host versus container](01-brev-gpu-node-validation.md#5-cuda-runtime--toolkit)
+6. [Container runtime — Docker](01-brev-gpu-node-validation.md#6-container-runtime)
+7. [PyTorch / NeMo — framework checks](01-brev-gpu-node-validation.md#7-pytorch--nemo)
+8. [Application — continue with Guide 02](01-brev-gpu-node-validation.md#8-application)
 
 **Status:** Reported access and inspection checks are complete. A real GPU computation remains pending; the guide is in progress.
 
@@ -19,7 +25,7 @@ Validate the infrastructure from host access through driver, container, and fram
 
 [Open Guide 02](02-nemotron-streaming-singapore-english.md)
 
-Build a small POC/tutorial using the NeMo Speech container, a persistent model cache, and separate NSC query/dev data.
+This continues the agenda at **layer 8: application**, following NeMo framework/model-loading checks in layer 7. Build a small POC/tutorial using the NeMo Speech container, a persistent model cache, and separate NSC query/dev data.
 
 **Completed:** Node preflight, NeMo 3.0.0 checks, model loading on `cuda:0`, cache configuration, and dataset downloads/extraction.
 

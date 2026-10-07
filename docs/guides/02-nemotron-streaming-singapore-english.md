@@ -2,6 +2,10 @@
 
 [All guides](README.md) · [Repository overview](../../README.md)
 
+## Where this guide fits in the agenda
+
+[Guide 01](01-brev-gpu-node-validation.md#agenda-validate-the-stack-from-gpu-to-application) follows physical GPU → PCIe enumeration → Linux kernel → NVIDIA driver → CUDA runtime/Toolkit → container runtime → PyTorch/NeMo → application. The NeMo import and model-placement checks below complete the reported framework access checks at **layer 7**. This guide continues into **layer 8: application** with a small ASR POC; successful transcription, training, and evaluation are still pending.
+
 ## Goal and scope
 
 Build a small proof of concept (POC) and tutorial for adapting streaming automatic speech recognition (ASR) to Singapore English. The goal is a manageable learning exercise, not production-quality tuning. Model loading, dataset preparation, training, and evaluation results will be documented only after they are performed.

@@ -162,6 +162,12 @@ Moved Guide 01 into `docs/guides/` alongside Guide 02 and renamed the empty code
 
 Added a guide index and navigation links in both guides, simplified the repository overview, and documented where future runnable guide assets should live. Removed empty placeholder directories; planned technologies remain in the roadmap and will receive directories when actual files are added. Recorded results and guide completion boundaries are unchanged.
 
+## 2026-10-07 — Eight-layer validation agenda added
+
+Organized Guide 01 around physical GPU, PCIe enumeration, Linux kernel, NVIDIA driver, CUDA runtime/Toolkit, container runtime, PyTorch/NeMo, and application. Added the same linked agenda to the overview/index and positioned Guide 02 as the application continuation. Preserved historical section anchors for existing milestone links.
+
+Clarified that `nvidia-smi` reports driver-supported CUDA compatibility, while `nvcc` identifies the development Toolkit in the selected environment. A host Toolkit is not required for this containerized setup. NeMo import/model placement evidence is linked from Guide 02; actual GPU computation, ASR inference, training, and evaluation remain pending. This is a documentation reorganization, with no new remote validation claimed.
+
 ## Updating this log
 
 For each meaningful milestone, add the actual date, objective, work performed, links to evidence, observed result, blockers or lessons, and next step. Distinguish work in progress from completed and validated work.
