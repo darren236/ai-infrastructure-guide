@@ -12,13 +12,13 @@ Build a small proof of concept (POC) and tutorial for fine-tuning `nvidia/nemotr
 
 ## Guide 02 workflow agenda
 
-[Node preflight](#node-preflight--complete) and [NeMo/model loading](#nemo-container-and-model-on-gpu--complete) are recorded setup checks. Source inspection, train/validation separation, annotation enumeration, eligibility analysis, the POC annotation policy, and subset generation are complete. The generator reported 300 train / 50 validation utterances; [independent output validation](#next-validate-derived-subsets--pending), referenced-audio integrity, NSC test checks, and steps 5–12 remain pending.
+[Node preflight](#node-preflight--complete) and [NeMo/model loading](#nemo-container-and-model-on-gpu--complete) are recorded setup checks. Source inspection, train/validation separation, annotation enumeration, eligibility analysis, the POC annotation policy, subset generation, and [independent subset checks](#derived-poc-subset-validation--complete) are complete. The 300 train / 50 validation records have no `<unk>` tags or shared speakers/IDs. Referenced-audio integrity, NSC test checks, and steps 5–12 remain pending.
 
 1. [Verify source manifests on the node](#split-construction-and-hands-on-verification) — counts checked; referenced-audio integrity not yet reported.
 2. [Verify speaker and utterance-ID separation](#split-construction-and-hands-on-verification) — complete for train/validation; NSC test checks pending.
 3. [Inspect and count transcript annotation tokens](#transcript-annotation-audit--complete) and [measure POC eligibility](#poc-eligibility-impact--complete) — complete; annotation policy decided.
-4. [Create deterministic speaker-aware POC subsets](#deterministic-poc-subset-generation--complete) — 300/50 generated; independent validation pending.
-5. Finalize remaining normalization rules and apply the chosen annotation policy reproducibly to derived data.
+4. [Create deterministic speaker-aware POC subsets](#deterministic-poc-subset-generation--complete) — 300/50 generated; ownership, counts, tags, speakers, and separation independently checked.
+5. [Normalize derived transcripts](#next-transcript-normalization--planned): remove `<v-noise>`/`<noise>` tokens while preserving actual words, local speech, and fillers; record any additional scoring rules.
 6. Convert derived data to NeMo manifests with audio paths valid inside the container.
 7. Run baseline inference on validation and record WER.
 8. Fine-tune on train only, starting with a training smoke test on the L4.
@@ -27,18 +27,18 @@ Build a small proof of concept (POC) and tutorial for fine-tuning `nvidia/nemotr
 11. Evaluate `nsc_test` for final held-out Singapore-English results — planned.
 12. Evaluate `gigaspeech_test` for external/OOD generalization and regressions after the NSC test — planned.
 
-Perform data preparation in the SSH-connected GPU host's working directory, outside Git. Download there and bind-mount host data into the container; a laptop path is not automatically available on the remote node. Record source revisions/checksums, the selection rule and seed, selected IDs, overlap results, normalization rules, container/model versions, and run settings. Keep validation IDs fixed; when scoring rules change during development, rescore both models consistently. The seed and generation report are recorded below; source checksums, independent subset checks, remaining normalization rules, and training settings remain pending.
+Perform data preparation in the SSH-connected GPU host's working directory, outside Git. Download there and bind-mount host data into the container; a laptop path is not automatically available on the remote node. Record source locations/versions, the script and selection seed, selected IDs, overlap results, normalization rules, container/model versions, and run settings. Keep validation IDs fixed; when scoring rules change during development, rescore both models consistently. Seed 42, generation output, and independent subset checks are recorded below; normalization and training settings remain pending.
 
 This POC keeps the experiment small for learning. A customer deployment would choose data coverage and evaluation sizes around actual users, audio conditions, and acceptance criteria; ~300/50 utterances are not a production recommendation. WER checks recognition quality, while streaming behavior, latency, throughput, and scheduler integration remain separate future work.
 
 ## Data strategy and experiment overview
 
-The intended progression is **train → validation/development loop → freeze model/configuration → NSC held-out test → GigaSpeech external/OOD benchmark**. NSC query/dev sources are downloaded and audited; **300/50 POC subsets have been generated**, with independent output validation pending. Test and benchmark sources are identified in the plan, with local preparation and evaluation still pending. **Validation** and **dev** mean the same role; the source directory remains `nsc_dev_3h`.
+The intended progression is **train → validation/development loop → freeze model/configuration → NSC held-out test → GigaSpeech external/OOD benchmark**. NSC query/dev sources are downloaded and audited; **300/50 POC subsets have been generated and independently checked** for ownership, record counts, tags, speakers, and separation. Test and benchmark sources are identified in the plan, with local preparation and evaluation still pending. **Validation** and **dev** mean the same role; the source directory remains `nsc_dev_3h`.
 
 | Stage | Planned source | POC / evaluation size | Purpose | Model learns from it? | When used | Status |
 | --- | --- | ---: | --- | --- | --- | --- |
-| Train | `nsc_query_5h` | 300 utterances, generator report | Fine-tuning | Yes, directly through gradient updates | First learning stage | Subset generated; independent validation pending |
-| Validation | `nsc_dev_3h` | 50 utterances, generator report | Baseline comparison, tuning, checkpoint/model decisions | No gradients; influences development indirectly | Before and during fine-tuning development | Subset generated; independent validation pending |
+| Train | `nsc_query_5h` | 300 utterances, independently checked | Fine-tuning | Yes, directly through gradient updates | First learning stage | Subset checks complete; normalization pending |
+| Validation | `nsc_dev_3h` | 50 utterances, independently checked | Baseline comparison, tuning, checkpoint/model decisions | No gradients; influences development indirectly | Before and during fine-tuning development | Subset checks complete; normalization pending |
 | Test | `nsc_test` | 3,684 utterances / ~7 h, upstream | Final held-out Singapore-English evaluation | No gradients or development tuning | After model/configuration is frozen | Planned; local preparation/evaluation pending |
 | External benchmark | `gigaspeech_test` | 19,930 utterances / 35.4 h, upstream | Out-of-domain (OOD) generalization/regression check | No gradients or routine tuning | After NSC test evaluation | Planned; local preparation/evaluation pending |
 
@@ -75,7 +75,14 @@ The [upstream dataset documentation](https://huggingface.co/datasets/pengyizhou/
 | `nsc_test` | Official NSC IMDA Part 6 test partition | 3,684 utterances / ~7 h, upstream | FLAC audio and JSONL manifest, per upstream; planned held-out in-domain evaluation |
 | `gigaspeech_test` | Separate GigaSpeech test corpus | 19,930 utterances / 35.4 h, upstream | WAV PCM_16 audio and JSONL manifest with normalized references, per upstream; planned external/OOD evaluation |
 
-The downloaded query/dev JSONL records use `id`, `speaker`, `duration` (seconds), `text` (reference transcript), and `audio` (relative path into `audio/`). Their download commands and examples are below. Local train/dev hour totals sum manifest duration fields; test/benchmark hours remain upstream descriptions. The generator reported 300/50 POC records; independent file checks remain pending.
+The downloaded query/dev JSONL records use `id`, `speaker`, `duration` (seconds), `text` (reference transcript), and `audio` (relative path into `audio/`). Their download commands and examples are below. Local train/dev hour totals sum manifest duration fields; test/benchmark hours remain upstream descriptions. Independent checks confirmed 300/50 POC records.
+
+Current original manifests on the Brev host, unchanged:
+
+```text
+/home/ubuntu/data/nsc/nsc_query_5h/manifest.jsonl
+/home/ubuntu/data/nsc/nsc_dev_3h/manifest.jsonl
+```
 
 ### Split construction and hands-on verification
 
@@ -83,11 +90,11 @@ The downloaded query/dev JSONL records use `id`, `speaker`, `duration` (seconds)
 
 **Verified on the Brev node:** The operator used [`check_split_overlap.py`](../../scripts/guide-02/check_split_overlap.py) to check the complete train and validation manifests. The script accepts both manifest paths at runtime and only reads them.
 
-Rerun from the repository root **on the GPU compute node**. The checkout and scripts must exist on that node; a laptop checkout is not automatically available over SSH. These commands use the audited source location `/data/nsc`; change the mount and arguments if your data lives elsewhere.
+Rerun from the repository root **on the GPU compute node**. The checkout and scripts must exist on that node; a laptop checkout is not automatically available over SSH. These reproduction commands map the host source directory to `/data/nsc` inside the container; change the mount and arguments if your data lives elsewhere.
 
 ```bash
 docker run --rm \
-  -v /data/nsc:/data/nsc:ro \
+  -v /home/ubuntu/data/nsc:/data/nsc:ro \
   -v "$PWD/scripts/guide-02:/scripts:ro" \
   nvcr.io/nvidia/nemo-speech:26.07.00 \
   python /scripts/check_split_overlap.py \
@@ -106,9 +113,9 @@ Speaker overlap: 0
 ID overlap:      0
 ```
 
-The complete train and validation manifests share no speakers or utterance IDs; dev is not simply a subset of query. This independently confirms the upstream train/dev speaker-disjoint design. It does **not** verify separation from `nsc_test`: compare query/dev/test pairwise when preparing test, and recheck the eventual POC subsets.
+The complete train and validation manifests share no speakers or utterance IDs; dev is not simply a subset of query. This independently confirms the upstream train/dev speaker-disjoint design. It does **not** verify separation from `nsc_test`: compare query/dev/test pairwise when preparing test. The derived POC subsets were also [checked independently](#derived-poc-subset-validation--complete).
 
-**SA/reproducibility:** Both checks ran inside the version-pinned NeMo Speech container with the source dataset mounted read-only. In these commands, `:ro` makes the data and script mounts read-only; `/scripts` is the container's script directory, and manifest paths are command-line arguments. Python comes from the container, without installing it on the host or modifying the dataset. Neither helper contains Brev-specific hardcoded paths. Record source checksums for reruns; the download directory below remains a reproduction example.
+**SA/reproducibility:** Both checks ran inside the version-pinned NeMo Speech container with the source dataset mounted read-only. In these commands, `:ro` makes the data and script mounts read-only; `/scripts` is the container's script directory, and manifest paths are command-line arguments. Python comes from the container, without installing it on the host or modifying the dataset. Neither helper contains Brev-specific hardcoded paths. Keep the source version/location and script version with the run notes; the download directory below remains a reproduction example.
 
 ### Direct learning versus development decisions
 
@@ -259,7 +266,7 @@ From the same repository root on the compute node:
 
 ```bash
 docker run --rm \
-  -v /data/nsc:/data/nsc:ro \
+  -v /home/ubuntu/data/nsc:/data/nsc:ro \
   -v "$PWD/scripts/guide-02:/scripts:ro" \
   nvcr.io/nvidia/nemo-speech:26.07.00 \
   python /scripts/inspect_transcript_tags.py \
@@ -435,7 +442,121 @@ Dev speakers:    50
 Dev duration:    0.11 hours
 ```
 
-Train: **300 utterances across all 111 eligible train speakers**, approximately **0.66 h / 40 minutes**. Validation: **50 utterances from 50 distinct speakers**, approximately **0.11 h / 6.6 minutes**. Durations sum manifest fields and are rounded. These are successful generation reports; independent output validation remains pending.
+Train: **300 utterances across all 111 eligible train speakers**, approximately **0.66 h / 40 minutes**. Validation: **50 utterances from 50 distinct speakers**, approximately **0.11 h / 6.6 minutes**. Durations sum manifest fields and are rounded. Record and speaker counts were independently checked below.
+
+<a id="next-validate-derived-subsets--pending"></a>
+
+## Derived POC subset validation — complete
+
+The operator independently checked the generated manifests on the Brev node, rather than relying on the generator's report. These checks cover file ownership, record counts, annotation tags, speakers, and utterance-ID separation; they do not establish audio integrity or model performance.
+
+### Host-side file ownership and line counts
+
+```bash
+ls -lh ~/data/nsc/poc
+```
+
+Initial ownership in this run:
+
+```text
+-rw-r--r-- 1 root root 13K ... dev_50.jsonl
+-rw-r--r-- 1 root root 82K ... train_300.jsonl
+```
+
+The container's default execution context produced root-owned output. Ownership was corrected **only for the two derived manifests**, then checked again with `ls -lh`; no original NSC files were changed:
+
+```bash
+sudo chown ubuntu:ubuntu \
+  ~/data/nsc/poc/train_300.jsonl \
+  ~/data/nsc/poc/dev_50.jsonl
+```
+
+Verified ownership:
+
+```text
+-rw-r--r-- 1 ubuntu ubuntu 13K ... dev_50.jsonl
+-rw-r--r-- 1 ubuntu ubuntu 82K ... train_300.jsonl
+```
+
+Independent line-count check:
+
+```bash
+wc -l \
+  ~/data/nsc/poc/train_300.jsonl \
+  ~/data/nsc/poc/dev_50.jsonl
+```
+
+Observed:
+
+```text
+300 /home/ubuntu/data/nsc/poc/train_300.jsonl
+ 50 /home/ubuntu/data/nsc/poc/dev_50.jsonl
+350 total
+```
+
+The tag and overlap helpers below also parsed all 300/50 records as JSONL.
+
+### Derived annotation tags
+
+The existing [`inspect_transcript_tags.py`](../../scripts/guide-02/inspect_transcript_tags.py) checked both derived files. To reproduce on the compute node with the helper present in the host work directory:
+
+```bash
+docker run --rm \
+  -v /home/ubuntu/data/nsc/poc:/data/poc:ro \
+  -v /home/ubuntu/work/nemotron-poc:/work:ro \
+  nvcr.io/nvidia/nemo-speech:26.07.00 \
+  python3 /work/inspect_transcript_tags.py \
+    /data/poc/train_300.jsonl \
+    /data/poc/dev_50.jsonl
+```
+
+Observed results:
+
+```text
+Manifest: /data/poc/train_300.jsonl
+Total records:       300
+Records with tags:    61
+Tag counts:
+  <v-noise>: 87
+  <noise>: 5
+
+Manifest: /data/poc/dev_50.jsonl
+Total records:       50
+Records with tags:    4
+Tag counts:
+  <v-noise>: 7
+```
+
+**`<unk>`: 0 in both subsets.** The whole-utterance exclusion worked. `<v-noise>` and sampled `<noise>` remain for later token removal; this is not normalized output.
+
+### Derived speaker and utterance-ID separation
+
+The existing [`check_split_overlap.py`](../../scripts/guide-02/check_split_overlap.py) independently checked the POC pair. Reproduction command:
+
+```bash
+docker run --rm \
+  -v /home/ubuntu/data/nsc/poc:/data/poc:ro \
+  -v /home/ubuntu/work/nemotron-poc:/work:ro \
+  nvcr.io/nvidia/nemo-speech:26.07.00 \
+  python3 /work/check_split_overlap.py \
+    /data/poc/train_300.jsonl \
+    /data/poc/dev_50.jsonl
+```
+
+Observed:
+
+```text
+Train records:   300
+Dev records:     50
+Train speakers:  111
+Dev speakers:    50
+Speaker overlap: 0
+ID overlap:      0
+```
+
+All 111 eligible train speakers are represented; validation contains 50 distinct speakers. The POC manifests share no speakers or utterance IDs. Both helpers use the pinned NeMo image with data/tooling mounted read-only and no GPU request; the commands above are reproduction examples. Source and derived checks remain separate evidence.
+
+## Troubleshooting notes
 
 ### Troubleshooting: arbitrary container UID
 
@@ -457,19 +578,17 @@ The interpreter was located at `/opt/venv/bin/python3`, but invoking it under th
 /opt/venv/bin/python3: Permission denied
 ```
 
-Do not assume a vendor container supports arbitrary host UID execution. This POC uses the image's default execution context and constrains host writes with read-only source/tooling mounts and a writable derived-output mount. The UID option is omitted from the successful command. Inspect generated-file ownership next; if correction is needed, handle it explicitly after generation. Ownership has not yet been checked or corrected.
+Do not assume a vendor container supports arbitrary host UID/GID execution. This POC uses the image's default execution context and constrains host writes with read-only source/tooling mounts and a writable derived-output mount. The UID option is omitted from the successful command; generated-file ownership was explicitly corrected afterward as recorded above.
 
-## Next: validate derived subsets — pending
+### Unexpected output: inspect the actual script
 
-The files have been created, but are **not yet fully validated**. On the compute node, independently:
+During node validation, `check_split_overlap.py` was accidentally overwritten with transcript-tag inspection code. Unexpected output prompted inspection of the script, preservation of the incorrect copy as `check_split_overlap.py.bad` locally, restoration of the known-good version, and rerunning validation. The incorrect artifact is not committed. Inspect the program producing unexpected output before drawing conclusions about the data.
 
-1. Inspect output file ownership.
-2. Verify line counts with `wc -l`: 300 train / 50 validation.
-3. Verify `<unk>` is absent.
-4. Verify speaker counts: 111 train / 50 validation.
-5. Verify deterministic reproduction using the same sources, seed, and sampling settings.
+## Next: transcript normalization — planned
 
-Recheck separation of the derived speaker/utterance-ID sets as well; existing source-overlap results remain separate evidence. After these checks, normalize `<noise>`/`<v-noise>` in derived transcripts, preserve local speech, convert NeMo manifests with container-valid audio paths, and run baseline validation inference. Normalization, conversion, baseline inference, fine-tuning, checkpointing, validation WER, `nsc_test`, and `gigaspeech_test` remain pending.
+Remove only `<v-noise>` and `<noise>` annotation tokens from the derived transcripts while preserving actual words, Singlish/local speech (`lah`, `wah`, `ya`, `mm`), and fillers. Write separate normalized outputs and record the policy consistently for train/validation; preserve the original source manifests and the generated subset files. Normalization has not been performed.
+
+After normalization, convert derived data to NeMo manifests with container-valid audio paths, then run baseline validation inference. Conversion, baseline inference, fine-tuning, checkpointing, validation WER, `nsc_test`, and `gigaspeech_test` remain pending. Fixed sources, sampling settings, and seed support reproducible selection; byte-for-byte artifact testing is not a required POC step.
 
 ## Completion boundaries and next step
 
@@ -491,8 +610,13 @@ Recheck separation of the derived speaker/utterance-ID sets as well; existing so
 | `<unk>` eligibility impact analysis | Complete: 2,158 / 1,225 records would remain, 4.59 / 2.71 h |
 | POC `<unk>`/annotation-handling decision | Complete: exclude whole `<unk>` utterances; keep noise-tagged utterances for later token removal |
 | Deterministic speaker-aware subset generation | Complete: seed 42; generator reported 300 train / 50 validation |
+| Derived POC directory creation | Complete: `~/data/nsc/poc` |
 | Derived POC manifest creation | Complete: `train_300.jsonl` / `dev_50.jsonl` |
-| Independent derived-subset validation | Not yet complete: ownership, counts, `<unk>` absence, speakers, reproduction |
+| Generated-file ownership correction | Complete: only the two derived files changed from `root:root` to `ubuntu:ubuntu` |
+| Independent host-side line counts | Complete: 300 train / 50 validation |
+| Derived annotation-tag validation | Complete: `<unk>` absent; train `<v-noise>` 87 / `<noise>` 5, validation `<v-noise>` 7 |
+| Derived speaker/utterance-ID validation | Complete: 111 / 50 speakers; 0 shared speakers and 0 shared IDs |
+| Independent derived-subset validation | Complete for the ownership, count, tag, speaker, and separation checks above |
 | Transcript normalization output | Not yet created; remaining transcript/scoring rules pending |
 | Annotation-policy application | Partial: generator excludes `<unk>`; noise-token normalization pending |
 | NeMo manifest conversion | Not yet complete |
@@ -508,13 +632,13 @@ Recheck separation of the derived speaker/utterance-ID sets as well; existing so
 | True streaming inference | Not yet complete |
 | Manual annotation/audio review | Future work; excluded from this POC |
 
-Next, independently validate the derived subsets, finish normalization, and convert derived manifests. Later: baseline validation → train → validation/development loop → freeze model/configuration → `nsc_test` → `gigaspeech_test`. Both evaluations remain planned. The infrastructure progression remains Docker validation → actual Nemotron inference → streaming inference → package the workload → SLURM; streaming and scheduler work remain future milestones.
+Next, normalize derived transcripts, then convert NeMo manifests. Later: baseline validation → train → validation/development loop → freeze model/configuration → `nsc_test` → `gigaspeech_test`. Both evaluations remain planned. The infrastructure progression remains Docker validation → actual Nemotron inference → streaming inference → package the workload → SLURM; streaming and scheduler work remain future milestones.
 
 <a id="single-file-inference-reference--not-yet-executed"></a>
 
 ## Appendix: optional single-file inference smoke test — not yet executed
 
-These previously prepared commands remain available for a one-file check; they are not evidence of completed baseline inference. The current next milestone is independent subset validation above. Run these commands in the GPU host's shell, including when connected over SSH. They require no notebook, GUI, or microphone. This is whole-file inference with a streaming-capable model; true streaming is a later milestone.
+These previously prepared commands remain available for a one-file check; they are not evidence of completed baseline inference. The current next milestone is transcript normalization above. Run these commands in the GPU host's shell, including when connected over SSH. They require no notebook, GUI, or microphone. This is whole-file inference with a streaming-capable model; true streaming is a later milestone.
 
 ### 1. Create an audio directory and download a small sample
 
