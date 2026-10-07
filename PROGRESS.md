@@ -187,6 +187,12 @@ Added the four data roles near the beginning of [Guide 02](docs/guides/02-nemotr
 
 Recorded the known NSC source counts and approximate sizes while keeping ~300/~50 subsets uncreated. Speaker/utterance-ID verification, normalization, NeMo manifests, baseline inference, training, checkpointing, and evaluation remain pending. Final test selection and optional external benchmark selection are explicit later TODOs. Added reproducibility and remote-host data-path guidance; no new datasets or GPU execution are claimed.
 
+### 2026-10-07 — Repository organized around per-guide agendas
+
+Made the repository README the starting point, with a separate goal, full agenda, and status for each active guide: eight stack layers for Guide 01 and the 12-step ASR workflow for Guide 02. Reduced the directory index to guide links and reserved the roadmap for future topics.
+
+Removed the unused top-level `guides/` placeholder; written guides remain in `docs/guides/` at their existing paths. Moved Guide 02's agenda ahead of its detailed data strategy and placed the optional single-WAV smoke test in an appendix after the main progress section. Existing commands, results, and completion boundaries are preserved; ~300/50 subsets remain the next execution step.
+
 ## Updating this log
 
 For each meaningful milestone, add a dated entry with the objective, work performed, links to evidence, observed result, blockers or lessons, and next step. Identify documentation sync dates and execution dates separately when known. Update **Current state** to match the latest evidence, while preserving earlier milestone snapshots. Distinguish prepared instructions from performed and validated work.

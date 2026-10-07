@@ -1,6 +1,6 @@
 # Guide 01 — GPU Node Validation
 
-[All guides](README.md) · [Repository overview](../../README.md)
+[Guide agendas](../../README.md#guides-and-agendas) · [Guide index](README.md)
 
 ## Agenda: validate the stack from GPU to application
 

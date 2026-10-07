@@ -2,9 +2,18 @@
 
 Practical AI infrastructure guides and a technical portfolio demonstrating NVIDIA Solutions Architect skills: GPU stack validation, containerized workloads, troubleshooting, and clear explanations of architecture and operational tradeoffs.
 
-## Agenda: from physical GPU to application
+Start with **Guide 01** to understand and validate the GPU stack, then follow **Guide 02** into a small Nemotron ASR fine-tuning POC. Each guide's agenda is below; open the guide for commands, explanations, observed results, and pending work.
 
-We work down this list, checking each layer before relying on it in the next. Guide 01 explains layers 1–7; Guide 02 continues with the Nemotron ASR application at layer 8.
+## Guides and agendas
+
+<a id="agenda-from-physical-gpu-to-application"></a>
+<a id="guides"></a>
+
+### Guide 01 — GPU Node Validation
+
+[Open Guide 01](docs/guides/01-brev-gpu-node-validation.md)
+
+**Goal:** Understand the path from the provisioned GPU to a working application on an NVIDIA L4 Brev node. Follow these eight layers as the reading agenda; use the minimum relevant check during customer troubleshooting.
 
 1. [Physical GPU](docs/guides/01-brev-gpu-node-validation.md#1-physical-gpu) — identify the provisioned GPU.
 2. [PCIe enumeration](docs/guides/01-brev-gpu-node-validation.md#2-pcie-enumeration) — check device visibility with `lspci`.
@@ -12,45 +21,57 @@ We work down this list, checking each layer before relying on it in the next. Gu
 4. [NVIDIA driver](docs/guides/01-brev-gpu-node-validation.md#4-nvidia-driver) — use `nvidia-smi`; its CUDA field reports driver compatibility, not the installed Toolkit/runtime version.
 5. [CUDA runtime / Toolkit](docs/guides/01-brev-gpu-node-validation.md#5-cuda-runtime--toolkit) — inspect `nvcc` in a devel container; a host Toolkit is not required for this setup.
 6. [Container runtime](docs/guides/01-brev-gpu-node-validation.md#6-container-runtime) — validate `docker info` and GPU-enabled `docker run`.
-7. [PyTorch / NeMo](docs/guides/01-brev-gpu-node-validation.md#7-pytorch--nemo) — run framework containers and check CUDA access/model placement.
-8. [Application](docs/guides/01-brev-gpu-node-validation.md#8-application) — process real inputs and verify the output.
+7. [PyTorch / NeMo](docs/guides/01-brev-gpu-node-validation.md#7-pytorch--nemo) — check framework CUDA access and model placement.
+8. [Application](docs/guides/01-brev-gpu-node-validation.md#8-application) — process real inputs and verify the output; continue into Guide 02.
 
-**Where we are:** The recorded checks reach framework access and Nemotron model loading. Layer 8 data preparation is underway; actual inference, training, and evaluation remain pending. During customer troubleshooting, use the minimum check that answers the current question.
+**Status:** Host/driver visibility, container GPU access, compiler inspection, and framework access are validated for the reported checks. Actual GPU computation and application inference remain pending; Guide 01 is in progress.
 
-## Guides
+### Guide 02 — Adapting NVIDIA Nemotron 3.5 Streaming ASR to Singapore English
 
-| Guide | Focus | Current progress |
-| --- | --- | --- |
-| [01 — GPU Node Validation](docs/guides/01-brev-gpu-node-validation.md) | Brev access, Linux, NVIDIA drivers, CUDA containers, and PyTorch/NeMo access | Host and container GPU access, compiler inspection, and framework access validated. GPU computation remains pending. |
-| [02 — Nemotron Streaming ASR for Singapore English](docs/guides/02-nemotron-streaming-singapore-english.md) | A small NeMo speech adaptation POC/tutorial | Preflight, NeMo 3.0.0, model loading on `cuda:0`, and NSC query/dev downloads validated; persistent cache configured. Preprocessing, inference, training, and evaluation remain pending. |
+[Open Guide 02](docs/guides/02-nemotron-streaming-singapore-english.md)
 
-Guide 02 follows a [four-stage data strategy](docs/guides/02-nemotron-streaming-singapore-english.md#data-strategy-and-experiment-overview): train → validation → final internal test → optional external benchmark. Only train/validation sources are downloaded; a final test and external benchmark are not selected.
+**Goal:** Fine-tune `nvidia/nemotron-3.5-asr-streaming-0.6b` on NSC Part 6 using the NVIDIA L4 Brev instance. This is a small POC/tutorial. Its data strategy is **train → validation → final internal test → optional external benchmark**.
 
-**Current next step:** Create deterministic Guide 02 subsets of roughly **300 training / 50 validation (dev) utterances**, then verify separation and prepare manifests. No completed baseline inference, fine-tuning, evaluation, or benchmark is claimed.
+1. [Understand the four data roles](docs/guides/02-nemotron-streaming-singapore-english.md#data-strategy-and-experiment-overview) — train, validation, test, external benchmark.
+2. [Inspect the available NSC data](docs/guides/02-nemotron-streaming-singapore-english.md#nsc-trainingquery-and-development-data--downloaded-and-extracted).
+3. [Create deterministic POC train/validation subsets](docs/guides/02-nemotron-streaming-singapore-english.md#next-create-tiny-deterministic-poc-subsets--planned) — approximately 300/50 utterances.
+4. Verify speaker and utterance-ID separation.
+5. Define transcript normalization, including annotation-tag handling.
+6. Convert to NeMo manifests with container-visible audio paths.
+7. Run baseline inference on validation and record WER.
+8. Fine-tune on train only, starting with a training smoke test.
+9. Evaluate checkpoints/model choices on validation.
+10. Finalize the model/configuration, normalization, and decoding settings.
+11. Select/verify and use a held-out test set after development decisions are settled.
+12. Optionally evaluate an independent external benchmark after the internal test.
 
-Browse the [guide index](docs/guides/README.md), check the [progress log](PROGRESS.md) for recorded milestones, or follow the [roadmap](ROADMAP.md) for future work.
+**Status:** Node preflight, NeMo 3.0.0/model loading on `cuda:0`, cache configuration, and NSC query/dev downloads are complete. Only example source records have been inspected; full data checks and steps 3–12 remain pending. Test and external benchmark sources are not selected.
+
+**Current next step:** Create the approximately **300 training / 50 validation (dev) utterance** subsets. The optional one-WAV smoke test is documented in Guide 02's appendix and remains unexecuted.
+
+## Future guides
+
+Storage/data access → Slurm → distributed training/NCCL → Kubernetes/GPU Operator → observability → architecture synthesis. These topics are planned in the [roadmap](ROADMAP.md); guide documents are added when work begins.
 
 ## Repository layout
 
 ```text
 ai-infrastructure-guide/
-├── README.md                 # Entry point and current status
-├── ROADMAP.md                # Planned learning sequence
-├── PROGRESS.md               # Dated milestones and evidence
+├── README.md                 # Guide overview and agendas
+├── ROADMAP.md                # Future topics
+├── PROGRESS.md               # Current status and dated milestone history
 ├── .gitignore
-├── docs/
-│   └── guides/
-│       ├── README.md         # Guide index
-│       ├── 01-brev-gpu-node-validation.md
-│       └── 02-nemotron-streaming-singapore-english.md
-└── guides/
-    └── README.md             # Placement of future runnable guide assets
+└── docs/
+    └── guides/
+        ├── README.md         # Short directory index
+        ├── 01-brev-gpu-node-validation.md
+        └── 02-nemotron-streaming-singapore-english.md
 ```
 
-Written instructions live in `docs/guides/`. Add code and configuration under `guides/` when a guide needs reusable files; directory conventions are explained [here](guides/README.md). Future work includes Slurm, NCCL, Kubernetes, NVIDIA GPU Operator, observability, networking, and storage. Create supporting directories when there is content to include.
+The [written guides](docs/guides/README.md) contain commands, architecture explanations, and recorded evidence. The [progress log](PROGRESS.md) keeps historical milestones; the [roadmap](ROADMAP.md) holds future topics. Add reusable scripts or configuration when an actual guide step needs them, and link from that guide.
 
 ## Documentation standard
 
-Each guide records its objective, actual environment, reproduction steps, observed results, troubleshooting lessons, and costs/cleanup where known. Distinguish completed checks from planned work and describe the limits of each result. Publish reviewed, sanitized evidence; keep credentials, datasets, model weights, raw terminal recordings, and raw workload outputs outside Git.
+Distinguish observed results from prepared instructions and planned work. Record the environment, reproduction steps, troubleshooting lessons, and costs/cleanup where known. Publish reviewed, sanitized evidence; keep credentials, datasets, model caches/weights, raw recordings, and raw workload outputs outside Git. A local laptop path is not automatically available on an SSH-connected GPU host.
 
 This is an independent learning guide and portfolio.

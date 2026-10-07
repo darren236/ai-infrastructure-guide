@@ -1,14 +1,35 @@
 # Guide 02 — Adapting NVIDIA Nemotron 3.5 Streaming ASR to Singapore English
 
-[All guides](README.md) · [Repository overview](../../README.md)
-
-## Where this guide fits in the agenda
-
-[Guide 01](01-brev-gpu-node-validation.md#agenda-validate-the-stack-from-gpu-to-application) follows physical GPU → PCIe enumeration → Linux kernel → NVIDIA driver → CUDA runtime/Toolkit → container runtime → PyTorch/NeMo → application. The NeMo import and model-placement checks below complete the reported framework access checks at **layer 7**. This guide continues into **layer 8: application** with a small ASR POC; successful transcription, training, and evaluation are still pending.
+[Guide agendas](../../README.md#guides-and-agendas) · [Guide index](README.md)
 
 ## Goal and scope
 
 Build a small proof of concept (POC) and tutorial for fine-tuning `nvidia/nemotron-3.5-asr-streaming-0.6b` on Singapore National Speech Corpus (NSC) Part 6, using an NVIDIA L4 24 GB class Brev instance. The goal is a manageable learning exercise, not production-quality tuning. Model loading, dataset preparation, training, and evaluation results are documented only after they are performed.
+
+## Where this guide fits in the agenda
+
+[Guide 01](01-brev-gpu-node-validation.md#agenda-validate-the-stack-from-gpu-to-application) covers host, container, and framework access. This guide continues at **layer 8: application** with the Nemotron ASR POC. NeMo import and model placement extend the reported layer 7 checks; transcription, training, and evaluation remain pending.
+
+## Guide 02 workflow agenda
+
+[Node preflight](#node-preflight--complete) and [NeMo/model loading](#nemo-container-and-model-on-gpu--complete) are recorded setup checks. Follow the application agenda below: source downloads and example inspection are complete, while subset creation and every later execution step remain pending.
+
+1. [Understand the four data roles](#data-strategy-and-experiment-overview): train, validation, test, external benchmark.
+2. [Inspect the available NSC data](#nsc-trainingquery-and-development-data--downloaded-and-extracted) — sources downloaded and example records inspected; full checks pending.
+3. [Create deterministic POC train/validation subsets](#next-create-tiny-deterministic-poc-subsets--planned) — approximately 300/50 utterances, not created.
+4. Verify speaker and utterance-ID separation before inference or training; revisit when selecting a test set.
+5. Define transcript normalization, including treatment of annotation tags; freeze scoring rules for comparisons.
+6. Convert to NeMo manifests with audio paths valid inside the container.
+7. Run baseline inference on validation and record WER.
+8. Fine-tune on train only, starting with a training smoke test on the L4.
+9. Evaluate checkpoints/model choices on validation; record any development changes and compare under the same scoring rules.
+10. Finalize the model/configuration: checkpoint, normalization, and decoding settings.
+11. Select/verify and use a held-out test set for final internal evaluation — TBD.
+12. Optionally evaluate an external benchmark after the internal test — TBD.
+
+Perform data preparation in the SSH-connected GPU host's working directory, outside Git. Download there and bind-mount host data into the container; a laptop path is not automatically available on the remote node. Record the source revision/checksum, fixed selection rule or seed, selected IDs, overlap-check results, normalization rules, container/model versions, and run settings. Keep validation IDs fixed; when scoring rules change during development, rescore both models consistently. These records remain to be produced.
+
+This POC keeps the experiment small for learning. A customer deployment would choose data coverage and evaluation sizes around actual users, audio conditions, and acceptance criteria; ~300/50 utterances are not a production recommendation. WER checks recognition quality, while streaming behavior, latency, throughput, and scheduler integration remain separate future work.
 
 ## Data strategy and experiment overview
 
@@ -73,27 +94,6 @@ Test results are for evaluating the finalized internal result. If we repeatedly 
 
 - **Final test:** No dedicated test set is selected or prepared. After validation choices are finalized, select and verify a suitable holdout with audio and reference transcripts, separated from POC train/validation speakers and utterance IDs. Record its source and size, then evaluate the fixed model/configuration without tuning on its results. If reserving data earlier, keep it untouched during development.
 - **External benchmark:** No benchmark is selected or prepared. Later, optionally choose independent audio and reference transcripts from a different source, corpus, or target distribution, document its scope, and evaluate after the internal test. Its source, size, and scoring rules remain TBD.
-
-## Guide 02 workflow agenda
-
-Node preflight and model loading are recorded below. Follow this application workflow next; none of the future execution steps is complete.
-
-1. Understand the four data roles: train, validation, test, external benchmark.
-2. Inspect the available NSC data — sources downloaded and example records inspected; full checks pending.
-3. Create deterministic POC train/validation subsets — approximately 300/50 utterances, not created.
-4. Verify speaker and utterance-ID separation before inference or training; revisit when selecting a test set.
-5. Define transcript normalization, including treatment of annotation tags; freeze scoring rules for comparisons.
-6. Convert to NeMo manifests with audio paths valid inside the container.
-7. Run baseline inference on validation and record WER.
-8. Fine-tune on train only, starting with a training smoke test on the L4.
-9. Evaluate checkpoints/model choices on validation; record any development changes and compare under the same scoring rules.
-10. Finalize the model/configuration: checkpoint, normalization, and decoding settings.
-11. Select/verify and use a held-out test set for final internal evaluation — TBD.
-12. Optionally evaluate an external benchmark after the internal test — TBD.
-
-Perform data preparation in the SSH-connected GPU host's working directory, outside Git. Download there and bind-mount host data into the container; a laptop path is not automatically available on the remote node. Record the source revision/checksum, fixed selection rule or seed, selected IDs, overlap-check results, normalization rules, container/model versions, and run settings. Keep validation IDs fixed; when scoring rules change during development, rescore both models consistently. These records remain to be produced.
-
-This POC keeps the experiment small for learning. A customer deployment would choose data coverage and evaluation sizes around actual users, audio conditions, and acceptance criteria; ~300/50 utterances are not a production recommendation. WER checks recognition quality, while streaming behavior, latency, throughput, and scheduler integration remain separate future work.
 
 ## Node preflight — complete
 
@@ -226,7 +226,41 @@ The next execution step is to select roughly **300 training utterances** from th
 
 Tiny subset creation, overlap verification, transcript normalization, NeMo manifest conversion, baseline inference, the training smoke test, fine-tuning, checkpointing, and evaluation all remain incomplete. Final test and external benchmark selection remain TODOs. Follow the workflow agenda above; the aim remains a small POC/tutorial, not production optimization.
 
-## Single-file inference reference — not yet executed
+## Completion boundaries and next step
+
+| Guide 02 stage | Status |
+| --- | --- |
+| Node resource preflight | Complete |
+| NeMo container validation | Complete: NeMo 3.0.0, ASR import and model loading |
+| Model download and loading | Complete: `EncDecRNNTBPEModelWithPrompt` |
+| Persistent Hugging Face cache | Host directory and bind mount configured; files survive container removal |
+| Model placement on GPU | Complete: `cuda:0` |
+| Single-file WAV inference | Instructions prepared; GPU execution and transcript pending |
+| NSC training/query download and extraction | Complete: 2,289 records, 214M |
+| NSC dev download and extraction | Complete: 1,316 records |
+| Four-stage data strategy and workflow | Documented; execution remains pending |
+| Tiny deterministic train/validation subsets | Not yet complete: approximately 300 / 50 planned |
+| Speaker-overlap verification | Not yet complete |
+| Utterance-ID overlap verification | Not yet complete |
+| Transcript normalization | Rules not yet defined or applied |
+| NeMo manifest conversion | Not yet complete |
+| Annotation-tag removal | Not yet complete |
+| Baseline inference / validation WER | Not yet complete |
+| Training smoke test | Not yet complete |
+| Fine-tuning | Not yet complete |
+| Checkpointing | Not yet complete |
+| Checkpoint/model comparison on validation | Not yet complete |
+| Final model/configuration | Not yet finalized |
+| Final held-out internal test | Not selected; evaluation pending after development choices are finalized |
+| External benchmark | Not selected; optional later milestone after internal test |
+| Performance benchmarking | Not yet complete |
+| True streaming inference | Not yet complete |
+
+Next, create the tiny deterministic train/validation subsets, then verify separation, define normalization, and convert manifests before baseline inference on validation. The four data roles organize later fine-tuning, model selection, internal test, and optional external evaluation; no final test or benchmark is selected. The eventual infrastructure progression remains simple Docker validation → actual Nemotron inference → streaming inference → package the workload cleanly → submit the equivalent workload through SLURM. Streaming and scheduler work remain future milestones.
+
+<a id="single-file-inference-reference--not-yet-executed"></a>
+
+## Appendix: optional single-file inference smoke test — not yet executed
 
 These previously prepared commands remain available for a one-file check; they are not evidence of completed baseline inference. The current next milestone is the tiny subset selection above. Run these commands in the GPU host's shell, including when connected over SSH. They require no notebook, GUI, or microphone. This is whole-file inference with a streaming-capable model; true streaming is a later milestone.
 
@@ -296,35 +330,3 @@ The [NVIDIA model card](https://huggingface.co/nvidia/nemotron-3.5-asr-streaming
 `model.cuda()` moves the model to GPU 0; `model.eval()` selects evaluation behavior, and `torch.inference_mode()` disables gradient tracking. `batch_size=1` keeps this to one file. `target_lang="en-US"` supplies the English prompt for this sample, without claiming a Singapore-specific adaptation. `return_hypotheses=True` returns a hypothesis whose `.text` is printed.
 
 Success means the process exits normally, reports `Model device: cuda:0`, and prints a nonempty transcript after `Transcript:`. Record the actual text and any errors after running it. No transcript or inference success is claimed yet. If the file is missing, check the host download and `/audio` mount first; if model loading succeeds but transcription fails, retain the error for targeted diagnosis.
-
-## Completion boundaries and next step
-
-| Guide 02 stage | Status |
-| --- | --- |
-| Node resource preflight | Complete |
-| NeMo container validation | Complete: NeMo 3.0.0, ASR import and model loading |
-| Model download and loading | Complete: `EncDecRNNTBPEModelWithPrompt` |
-| Persistent Hugging Face cache | Host directory and bind mount configured; files survive container removal |
-| Model placement on GPU | Complete: `cuda:0` |
-| Single-file WAV inference | Instructions prepared; GPU execution and transcript pending |
-| NSC training/query download and extraction | Complete: 2,289 records, 214M |
-| NSC dev download and extraction | Complete: 1,316 records |
-| Four-stage data strategy and workflow | Documented; execution remains pending |
-| Tiny deterministic train/validation subsets | Not yet complete: approximately 300 / 50 planned |
-| Speaker-overlap verification | Not yet complete |
-| Utterance-ID overlap verification | Not yet complete |
-| Transcript normalization | Rules not yet defined or applied |
-| NeMo manifest conversion | Not yet complete |
-| Annotation-tag removal | Not yet complete |
-| Baseline inference / validation WER | Not yet complete |
-| Training smoke test | Not yet complete |
-| Fine-tuning | Not yet complete |
-| Checkpointing | Not yet complete |
-| Checkpoint/model comparison on validation | Not yet complete |
-| Final model/configuration | Not yet finalized |
-| Final held-out internal test | Not selected; evaluation pending after development choices are finalized |
-| External benchmark | Not selected; optional later milestone after internal test |
-| Performance benchmarking | Not yet complete |
-| True streaming inference | Not yet complete |
-
-Next, create the tiny deterministic train/validation subsets, then verify separation, define normalization, and convert manifests before baseline inference on validation. The four data roles organize later fine-tuning, model selection, internal test, and optional external evaluation; no final test or benchmark is selected. The eventual infrastructure progression remains simple Docker validation → actual Nemotron inference → streaming inference → package the workload cleanly → submit the equivalent workload through SLURM. Streaming and scheduler work remain future milestones.

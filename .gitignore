@@ -79,4 +79,4 @@ temp/
 .cache/
 
 # Reviewed benchmark reports and sanitized evidence may be committed
-# under docs/ or guides/ using deliberate filenames and formats.
+# under docs/ using deliberate filenames and formats.
