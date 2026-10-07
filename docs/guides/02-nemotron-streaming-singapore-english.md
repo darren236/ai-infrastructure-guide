@@ -12,19 +12,19 @@ Build a small proof of concept (POC) and tutorial for fine-tuning `nvidia/nemotr
 
 ## Guide 02 workflow agenda
 
-[Node preflight](#node-preflight--complete) and [NeMo/model loading](#nemo-container-and-model-on-gpu--complete) are recorded setup checks. Query/dev downloads and example inspection are complete; subset creation, test/benchmark preparation, and every later execution step remain pending.
+[Node preflight](#node-preflight--complete) and [NeMo/model loading](#nemo-container-and-model-on-gpu--complete) are recorded setup checks. Query/dev downloads and example inspection are complete. The [four data roles](#data-strategy-and-experiment-overview) explain the experiment; all hands-on steps below remain pending.
 
-1. [Understand the four data roles](#data-strategy-and-experiment-overview): train, validation, test, external benchmark.
-2. [Inspect the available NSC data](#nsc-trainingquery-and-development-data--downloaded-and-extracted) — sources downloaded and example records inspected; full checks pending.
-3. [Create deterministic POC train/validation subsets](#next-create-tiny-deterministic-poc-subsets--planned) — approximately 300/50 utterances, not created.
-4. Verify speaker and utterance-ID separation on the compute node before inference or training; include NSC test when preparing it.
-5. Define transcript normalization, including treatment of annotation tags; freeze scoring rules for comparisons.
-6. Convert to NeMo manifests with audio paths valid inside the container.
+1. [Verify source manifests on the node](#nsc-trainingquery-and-development-data--downloaded-and-extracted): schema, record counts, and referenced audio paths.
+2. [Verify speaker and utterance-ID separation](#split-construction-and-hands-on-verification); include NSC test when preparing it.
+3. [Inspect and count transcript annotation tokens](#transcript-annotations-and-normalization--planned) in train and validation.
+4. [Create deterministic POC train/validation subsets](#next-data-preparation-on-the-compute-node--planned) — approximately 300/50 utterances, not created.
+5. Define an explicit transcript-normalization policy from the inspection; apply it reproducibly to derived data.
+6. Convert derived data to NeMo manifests with audio paths valid inside the container.
 7. Run baseline inference on validation and record WER.
 8. Fine-tune on train only, starting with a training smoke test on the L4.
-9. Evaluate checkpoints/model choices on validation; record any development changes and compare under the same scoring rules.
+9. Use validation for development/model selection; record changes and compare checkpoints under the same scoring rules.
 10. Freeze the model/configuration: checkpoint, normalization, and decoding settings.
-11. Verify and evaluate `nsc_test` for final held-out in-domain results — planned.
+11. Evaluate `nsc_test` for final held-out Singapore-English results — planned.
 12. Evaluate `gigaspeech_test` for external/OOD generalization and regressions after the NSC test — planned.
 
 Perform data preparation in the SSH-connected GPU host's working directory, outside Git. Download there and bind-mount host data into the container; a laptop path is not automatically available on the remote node. Record the source revision/checksum, fixed selection rule or seed, selected IDs, overlap-check results, normalization rules, container/model versions, and run settings. Keep validation IDs fixed; when scoring rules change during development, rescore both models consistently. These records remain to be produced.
@@ -39,7 +39,7 @@ The intended progression is **train → validation/development loop → freeze m
 | --- | --- | ---: | --- | --- | --- | --- |
 | Train | `nsc_query_5h` | ~300 utterances | Fine-tuning | Yes, directly through gradient updates | First learning stage | Source downloaded; subset not created |
 | Validation | `nsc_dev_3h` | ~50 utterances | Baseline comparison, tuning, checkpoint/model decisions | No gradients; influences development indirectly | Before and during fine-tuning development | Source downloaded; subset not created |
-| Test | `nsc_test` | 3,684 utterances / ~7 h, upstream | Final held-out in-domain evaluation | No gradients or development tuning | After model/configuration is frozen | Planned; local preparation/evaluation pending |
+| Test | `nsc_test` | 3,684 utterances / ~7 h, upstream | Final held-out Singapore-English evaluation | No gradients or development tuning | After model/configuration is frozen | Planned; local preparation/evaluation pending |
 | External benchmark | `gigaspeech_test` | 19,930 utterances / 35.4 h, upstream | Out-of-domain (OOD) generalization/regression check | No gradients or routine tuning | After NSC test evaluation | Planned; local preparation/evaluation pending |
 
 ```text
@@ -55,7 +55,7 @@ Freeze model and configuration
      ↓
 NSC held-out test: nsc_test
      ↓
-Final in-domain evaluation
+Final held-out Singapore-English evaluation
      ↓
 GigaSpeech external benchmark: gigaspeech_test
      ↓
@@ -71,7 +71,7 @@ The [upstream dataset documentation](https://huggingface.co/datasets/pengyizhou/
 | Source | Origin | Full source size | Contents and intended use |
 | --- | --- | --- | --- |
 | `nsc_query_5h` | NSC IMDA Part 6 train partition | 2,289 utterances locally; ~5 h; ~214 MB, recorded as `214M` | FLAC audio and JSONL manifest; ~300 planned training utterances for gradient updates |
-| `nsc_dev_3h` | NSC IMDA Part 6 train partition | 1,316 utterances locally; ~3 h | FLAC audio and JSONL manifest; ~50 planned validation utterances for development/checkpoint decisions; tags such as `<v-noise>` |
+| `nsc_dev_3h` | NSC IMDA Part 6 train partition | 1,316 utterances locally; ~3 h | FLAC audio and JSONL manifest; ~50 planned validation utterances for development/checkpoint decisions |
 | `nsc_test` | Official NSC IMDA Part 6 test partition | 3,684 utterances / ~7 h, upstream | FLAC audio and JSONL manifest, per upstream; planned held-out in-domain evaluation |
 | `gigaspeech_test` | Separate GigaSpeech test corpus | 19,930 utterances / 35.4 h, upstream | WAV PCM_16 audio and JSONL manifest with normalized references, per upstream; planned external/OOD evaluation |
 
@@ -79,7 +79,7 @@ The downloaded query/dev JSONL records use `id`, `speaker`, `duration` (seconds)
 
 ### Split construction and hands-on verification
 
-`nsc_query_5h` and `nsc_dev_3h` both come from the NSC train partition, but **neither is a subset of the other**: query/dev speakers were sampled using different speaker sets. The [publisher's split-construction notes](https://huggingface.co/datasets/pengyizhou/IALP-2026-data#split-construction-nsc) state that query, dev, and `nsc_test` are mutually speaker-disjoint, and query/dev exclude every speaker appearing in the official NSC test partition.
+`nsc_query_5h` and `nsc_dev_3h` are separate selections from the NSC Part 6 train partition, constructed using different speaker sets. **`nsc_dev_3h` is not a subset of `nsc_query_5h`**. The [publisher's split-construction notes](https://huggingface.co/datasets/pengyizhou/IALP-2026-data#split-construction-nsc) state that query, dev, and `nsc_test` are mutually speaker-disjoint, and query/dev exclude every speaker appearing in the official NSC test partition. `nsc_test` comes from that official test partition.
 
 Keep the hands-on check: on the compute node, compare `speaker` and utterance `id` sets pairwise across query/dev/test, then verify the chosen POC subsets. Record intersections and source versions as an SA/reproducibility exercise. Upstream speaker-disjointness is a documented claim; our local speaker and utterance-ID checks remain pending.
 
@@ -220,17 +220,33 @@ Example development record (ID and audio filename shortened):
 {"id":"...","speaker":"00017","duration":6.24,"text":"okay sure <v-noise> uh good afternoon may i have your contact number in case the line like get uh disconnected","audio":"audio/...flac"}
 ```
 
-The inspected train/validation records share the fields `id`, `speaker`, `duration`, `text`, and `audio`, with relative FLAC paths. These source manifests have not yet been converted to NeMo format. Validation transcripts can contain annotation tags such as `<v-noise>`; tag removal is planned as part of transcript normalization, whose rules have not yet been defined or applied.
+The inspected train/validation records share the fields `id`, `speaker`, `duration`, `text`, and `audio`, with relative FLAC paths. These source manifests have not yet been converted to NeMo format.
+
+### Transcript annotations and normalization — planned
+
+**Observed:** The operator reports annotation tokens such as `<v-noise>` in **both training/query and validation/dev transcripts**. `<v-noise>` represents a vocal/non-lexical noise annotation, rather than an ordinary spoken word. Do not assume it is the only annotation type present; a full inventory and counts are still pending.
+
+Before converting manifests or calculating WER, we will:
+
+1. Inspect train and validation transcripts.
+2. Enumerate and count annotation tokens matching `<...>` in both sources.
+3. Define an explicit transcript-normalization policy based on all observed types.
+4. Apply that policy consistently and reproducibly, with recorded rules for WER comparisons.
+5. Preserve the original manifests unchanged; write normalized subsets and NeMo manifests to separate derived files.
+
+These preparation steps have not been executed. No final removal or replacement rule is selected yet; inspect the annotation types before deciding how to handle them.
 
 ### Why keep development data separate?
 
 Use query for gradient updates and dev for validation WER, development choices, and checkpoint selection. They share the NSC train partition but use different speaker sets; neither is a subset of the other. Verify separation locally as described above. Validation influences development, so it does not replace the final `nsc_test` evaluation.
 
-## Next: create tiny deterministic POC subsets — planned
+<a id="next-create-tiny-deterministic-poc-subsets--planned"></a>
 
-The next execution step is to select roughly **300 training utterances** from the query split and **50 validation utterances** from the separate dev split, using a fixed selection rule or seed so the experiment can be reproduced. Record selected IDs, then verify speaker and utterance-ID separation before using the subsets. This step has not been executed.
+## Next: data preparation on the compute node — planned
 
-Tiny subset creation, overlap verification, transcript normalization, NeMo manifest conversion, baseline inference, the training smoke test, fine-tuning, checkpointing, and evaluation all remain incomplete. NSC test and GigaSpeech sources are identified in the plan; their local preparation and evaluation remain pending. Follow the workflow agenda above; the aim remains a small POC/tutorial, not production optimization.
+First verify the source manifests, speaker/utterance-ID separation, and transcript annotation inventory on the node. Then select roughly **300 training utterances** from query and **50 validation utterances** from dev using a fixed selection rule or seed; record selected IDs and recheck subset separation. Define the normalization policy from the inspection, apply it to derived data, and convert that data to NeMo manifests before baseline validation inference.
+
+Follow the [12-step workflow agenda](#guide-02-workflow-agenda); all of these execution steps remain pending. NSC test and GigaSpeech sources are identified in the plan, with local preparation and evaluation still pending. The aim remains a small POC/tutorial, not production optimization.
 
 ## Completion boundaries and next step
 
@@ -245,12 +261,14 @@ Tiny subset creation, overlap verification, transcript normalization, NeMo manif
 | NSC training/query download and extraction | Complete: 2,289 records, 214M |
 | NSC dev download and extraction | Complete: 1,316 records |
 | Four-stage data strategy and workflow | Documented; execution remains pending |
-| Tiny deterministic train/validation subsets | Not yet complete: approximately 300 / 50 planned |
+| Full source-manifest verification | Not yet complete |
 | Speaker-overlap verification | Not yet complete |
 | Utterance-ID overlap verification | Not yet complete |
+| Annotation-token inventory and counts | Not yet complete; occurrence reported in both train and validation |
+| Tiny deterministic train/validation subsets | Not yet complete: approximately 300 / 50 planned |
 | Transcript normalization | Rules not yet defined or applied |
+| Annotation-policy application | Not yet complete; final rules undecided |
 | NeMo manifest conversion | Not yet complete |
-| Annotation-tag removal | Not yet complete |
 | Baseline inference / validation WER | Not yet complete |
 | Training smoke test | Not yet complete |
 | Fine-tuning | Not yet complete |
@@ -262,13 +280,13 @@ Tiny subset creation, overlap verification, transcript normalization, NeMo manif
 | Performance benchmarking | Not yet complete |
 | True streaming inference | Not yet complete |
 
-Next, create the tiny deterministic train/validation subsets, verify separation, define normalization, and convert manifests before baseline validation inference. Later: train → validation/development loop → freeze model/configuration → `nsc_test` → `gigaspeech_test`. Both evaluations remain planned. The infrastructure progression remains Docker validation → actual Nemotron inference → streaming inference → package the workload → SLURM; streaming and scheduler work remain future milestones.
+Next, verify source manifests, separation, and annotation tokens before creating the tiny subsets, defining normalization, and converting derived manifests. Later: baseline validation → train → validation/development loop → freeze model/configuration → `nsc_test` → `gigaspeech_test`. Both evaluations remain planned. The infrastructure progression remains Docker validation → actual Nemotron inference → streaming inference → package the workload → SLURM; streaming and scheduler work remain future milestones.
 
 <a id="single-file-inference-reference--not-yet-executed"></a>
 
 ## Appendix: optional single-file inference smoke test — not yet executed
 
-These previously prepared commands remain available for a one-file check; they are not evidence of completed baseline inference. The current next milestone is the tiny subset selection above. Run these commands in the GPU host's shell, including when connected over SSH. They require no notebook, GUI, or microphone. This is whole-file inference with a streaming-capable model; true streaming is a later milestone.
+These previously prepared commands remain available for a one-file check; they are not evidence of completed baseline inference. The current next milestone is the data-preparation sequence above. Run these commands in the GPU host's shell, including when connected over SSH. They require no notebook, GUI, or microphone. This is whole-file inference with a streaming-capable model; true streaming is a later milestone.
 
 ### 1. Create an audio directory and download a small sample
 

@@ -3,15 +3,16 @@
 ## Current state
 
 - **Documentation:** [Guide 01](docs/guides/01-brev-gpu-node-validation.md) covers node validation, CUDA host/container architecture, Docker/NVIDIA integration, CUDA image inspection, and PyTorch CUDA access. [Guide 02](docs/guides/02-nemotron-streaming-singapore-english.md) documents preflight, model loading, NSC source downloads, and a four-stage experiment overview for a small Singapore English ASR POC. Single-file inference instructions remain unexecuted.
-- **Guide 02:** Preflight, NeMo 3.0.0 container checks, model loading, persistent cache configuration, model placement on `cuda:0`, and NSC query/dev downloads and extraction complete. Train/validation subsets, speaker/utterance-ID overlap verification, normalization, NeMo manifest conversion, baseline inference, training, checkpointing, evaluation, and true streaming remain incomplete.
+- **Guide 02:** Preflight, NeMo 3.0.0 container checks, model loading, persistent cache configuration, model placement on `cuda:0`, and NSC query/dev downloads and extraction complete. Full source-manifest checks, speaker/utterance-ID overlap verification, annotation inventory/counts, train/validation subsets, normalization, NeMo manifest conversion, baseline inference, training, checkpointing, evaluation, and true streaming remain incomplete.
 - **Guide 02 data roles:** `nsc_query_5h` is train and `nsc_dev_3h` is validation (dev), both from the NSC Part 6 train partition using different speaker sets. The plan now uses `nsc_test` from the official NSC test partition and `gigaspeech_test` for external/OOD evaluation. [Train → validation → freeze model/configuration → NSC test → GigaSpeech](docs/guides/02-nemotron-streaming-singapore-english.md#data-strategy-and-experiment-overview) remains planned execution; test/benchmark preparation and local overlap checks are unvalidated.
+- **Guide 02 annotations:** The operator reports `<v-noise>` in both train and validation transcripts. Other annotation types have not been inventoried; no final normalization rule is selected. Original source manifests must remain unchanged while derived files are prepared.
 - **Hands-on guides:** Guide 01 in progress; cloud connectivity, Linux host, PCIe GPU visibility, and NVIDIA driver communication validated. Host Toolkit discovery complete for the checked PATH and conventional locations; no installation found.
 - **Docker, NVIDIA container integration, container GPU passthrough, CUDA base image launch, and CUDA devel image / `nvcc` inspection:** Complete for the reported checks.
 - **PyTorch NGC container, CUDA availability, GPU identity, and interactive/one-liner workflows:** Validated or documented for the reported scope; interactive execution reported.
 - **Actual GPU inference/computation, real training, NeMo training, distributed training/NCCL, and performance benchmarking:** Not yet complete.
 - **Training runs, application deployments, and benchmarks:** None documented.
 
-**Current next step:** Create deterministic Guide 02 subsets of approximately **300 training / 50 validation (dev) utterances**. Then verify speaker and utterance-ID separation, define normalization, convert NeMo manifests, and run baseline validation WER. Every execution step remains pending.
+**Current next step:** Verify Guide 02 source manifests, speaker/utterance-ID separation, and annotation tokens on the compute node. Then create deterministic **~300 train / ~50 validation** subsets, define/apply normalization to derived data, convert NeMo manifests, and run baseline validation WER. Every execution step remains pending.
 
 ## Milestone history
 
@@ -198,6 +199,12 @@ Removed the unused top-level `guides/` placeholder; written guides remain in `do
 Checked the [upstream dataset documentation](https://huggingface.co/datasets/pengyizhou/IALP-2026-data) and updated Guide 02/README agendas: query (~300 planned) → dev (~50 planned) → freeze configuration → `nsc_test` (3,684 utterances / ~7 h upstream) → `gigaspeech_test` (19,930 / 35.4 h upstream). Local query/dev counts remain 2,289/1,316; the POC subsets are not created.
 
 Documented that query/dev come from different speaker sets in the NSC train partition and are not subsets of one another. Upstream states query/dev/test are mutually speaker-disjoint and query/dev exclude all official-test speakers. Pairwise speaker/utterance-ID checks on the compute node remain a hands-on reproducibility step. Test/benchmark preparation, evaluation, and all pending training work remain unvalidated; no new downloads or GPU execution are claimed.
+
+### 2026-10-07 — Guide 02 annotations and data-preparation sequence documented
+
+Recorded the operator's finding that `<v-noise>` occurs in both training/query and validation/dev transcripts as a vocal/non-lexical noise annotation. A full annotation inventory and counts remain pending; no final removal or replacement rule is selected. This supersedes the earlier tag-removal plan.
+
+Aligned Guide 02 and the README agenda: source checks → speaker/utterance-ID separation → annotation inspection/counts → deterministic ~300/~50 subsets → normalization policy → derived NeMo manifests → baseline validation → train → validation/model selection → freeze → `nsc_test` → `gigaspeech_test`. Original manifests remain untouched. All preparation, inference, training, and evaluation steps in this sequence are planned, with no new node execution claimed.
 
 ## Updating this log
 
