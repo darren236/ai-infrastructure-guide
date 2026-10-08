@@ -17,13 +17,13 @@ Build a small proof of concept (POC) and tutorial for fine-tuning `nvidia/nemotr
 | Overview | [Current pipeline](#current-pipeline-status) · [Data strategy](#data-strategy-and-experiment-overview) |
 | Node setup | [Preflight](#node-preflight--complete) · [NeMo and model loading](#nemo-container-and-model-on-gpu--complete) |
 | Source data | [NSC download](#nsc-trainingquery-and-development-data--downloaded-and-extracted) · [Manifest checks and annotation policy](#source-manifest-checks--complete) |
-| Derived POC data | [Subset generation](#deterministic-poc-subset-generation--complete) · [Independent validation](#derived-poc-subset-validation--complete) |
-| Next work and status | [Transcript normalization](#next-transcript-normalization--planned) · [Completion boundaries and checkpoint](#completion-boundaries-and-next-step) |
+| Derived POC data | [Subset generation](#deterministic-poc-subset-generation--complete) · [Independent validation](#derived-poc-subset-validation--complete) · [Normalization](#transcript-annotation-normalization--complete) · [Nemotron conversion](#nemotron-compatible-manifest-conversion--complete) |
+| Next work and status | [One-utterance GPU smoke test](#next-single-utterance-gpu-inference--planned) · [Completion boundaries and checkpoint](#completion-boundaries-and-next-step) |
 | References | [Helper scripts](../../scripts/guide-02/README.md) · [Troubleshooting](#troubleshooting-notes) · [Optional one-WAV test](#appendix-optional-single-file-inference-smoke-test--not-yet-executed) |
 
 ## Guide 02 workflow agenda
 
-[Node preflight](#node-preflight--complete) and [NeMo/model loading](#nemo-container-and-model-on-gpu--complete) are recorded setup checks. Source inspection, train/validation separation, annotation enumeration, eligibility analysis, the POC annotation policy, subset generation, and [independent subset checks](#derived-poc-subset-validation--complete) are complete. The 300 train / 50 validation records have no `<unk>` tags or shared speakers/IDs. Referenced-audio integrity, NSC test checks, and steps 5–12 remain pending.
+[Node preflight](#node-preflight--complete), [NeMo/model loading](#nemo-container-and-model-on-gpu--complete), source inspection/separation, annotation auditing, subset generation/validation, [normalization](#transcript-annotation-normalization--complete), and [Nemotron manifest conversion](#nemotron-compatible-manifest-conversion--complete) are complete for the operator-reported checks. Conversion found all 300/50 selected audio files, and one final record per split was inspected. Audio decoding, loader/model execution, NSC test checks, and steps 7–12 remain pending.
 
 ### Current pipeline status
 
@@ -46,54 +46,58 @@ POC data policy ✅
         ↓
 Deterministic speaker-aware subsets ✅
         ↓
-Independent derived-subset validation ✅  ← CURRENT CHECKPOINT
+Independent derived-subset validation ✅
         ↓
-Transcript normalization                 ← NEXT
+Transcript annotation normalization ✅
         ↓
-NeMo manifest conversion
+Nemotron-compatible manifest conversion ✅
         ↓
-Baseline inference → baseline validation WER
+Manifest sample inspection ✅             ← CURRENT CHECKPOINT
         ↓
-Training smoke test → fine-tune on train
+Single-utterance GPU inference smoke test ← NEXT — NOT RUN
+        ↓
+Fixed 50-utterance validation baseline + WER — NOT RUN
+        ↓
+Training smoke test → fine-tune on train — NOT RUN
         ↓
 Validation / development loop
         ↓
-Freeze checkpoint + configuration
+Freeze checkpoint, configuration, and scoring policy
         ↓
 NSC held-out test → GigaSpeech external/OOD benchmark
 ```
 
 ### Hands-on agenda
 
-1. [Verify source manifests on the node](#split-construction-and-hands-on-verification) — counts checked; referenced-audio integrity not yet reported.
+1. [Verify source manifests on the node](#split-construction-and-hands-on-verification) — counts checked; full-source audio integrity not audited.
 2. [Verify speaker and utterance-ID separation](#split-construction-and-hands-on-verification) — complete for train/validation; NSC test checks pending.
 3. [Inspect and count transcript annotation tokens](#transcript-annotation-audit--complete) and [measure POC eligibility](#poc-eligibility-impact--complete) — complete; annotation policy decided.
 4. [Create deterministic speaker-aware POC subsets](#deterministic-poc-subset-generation--complete) — 300/50 generated; ownership, counts, tags, speakers, and separation independently checked.
-5. [Normalize derived transcripts](#next-transcript-normalization--planned): remove `<v-noise>`/`<noise>` tokens while preserving actual words, local speech, and fillers; record any additional scoring rules.
-6. Convert derived data to NeMo manifests with audio paths valid inside the container.
-7. Run baseline inference on validation and record WER.
+5. [Normalize derived transcripts](#transcript-annotation-normalization--complete) — complete: noise tags removed, whitespace cleaned, spoken words and metadata preserved; scoring policy still pending.
+6. [Convert to Nemotron manifests](#nemotron-compatible-manifest-conversion--complete) — complete: five fields, 300/50 records, selected file paths found; one record per split inspected.
+7. [Run one validation utterance on GPU](#next-single-utterance-gpu-inference--planned) — next, unexecuted; then run the fixed 50-utterance baseline and WER under finalized scoring settings.
 8. Fine-tune on train only, starting with a training smoke test on the L4.
 9. Use validation for development/model selection; record changes and compare checkpoints under the same scoring rules.
 10. Freeze the model/configuration: checkpoint, normalization, and decoding settings.
 11. Evaluate `nsc_test` for final held-out Singapore-English results — planned.
 12. Evaluate `gigaspeech_test` for external/OOD generalization and regressions after the NSC test — planned.
 
-Perform data preparation in the SSH-connected GPU host's working directory, outside Git. Download there and bind-mount host data into the container; a laptop path is not automatically available on the remote node. Record source locations/versions, the script and selection seed, selected IDs, overlap results, normalization rules, container/model versions, and run settings. Keep validation IDs fixed; when scoring rules change during development, rescore both models consistently. Seed 42, generation output, and independent subset checks are recorded below; normalization and training settings remain pending.
+Perform data preparation in the SSH-connected GPU host's working directory, outside Git. Download there and bind-mount host data into the container; a laptop path is not automatically available on the remote node. Record source locations/versions, scripts/seed, selected IDs, overlap results, cleanup/scoring rules, container/model versions, and run settings. Keep validation IDs fixed; when scoring rules change, rescore both models consistently. Annotation cleanup and manifest preparation are recorded below; final scoring/decoding policy and training settings remain pending.
 
 This POC keeps the experiment small for learning. A customer deployment would choose data coverage and evaluation sizes around actual users, audio conditions, and acceptance criteria; ~300/50 utterances are not a production recommendation. WER checks recognition quality, while streaming behavior, latency, throughput, and scheduler integration remain separate future work.
 
 ## Data strategy and experiment overview
 
-The intended progression is **train → validation/development loop → freeze model/configuration → NSC held-out test → GigaSpeech external/OOD benchmark**. NSC query/dev sources are downloaded and audited; **300/50 POC subsets have been generated and independently checked** for ownership, record counts, tags, speakers, and separation. Test and benchmark sources are identified in the plan, with local preparation and evaluation still pending. **Validation** and **dev** mean the same role; the source directory remains `nsc_dev_3h`.
+The intended progression is **train → validation/development loop → freeze model/configuration/scoring → NSC held-out test → GigaSpeech external/OOD benchmark**. The **300/50 selected subsets are normalized and converted**, with selected file existence checked and one final record inspected per split; model execution remains pending. Test and benchmark sources are identified in the plan, with local preparation/evaluation pending. **Validation** and **dev** mean the same role; the source directory remains `nsc_dev_3h`.
 
 | Stage | Source → derived POC data | POC / evaluation size | Purpose | Model learns from it? | When used | Status |
 | --- | --- | ---: | --- | --- | --- | --- |
-| Train | `nsc_query_5h` → `poc/train_300.jsonl` | 300 utterances, independently checked | Fine-tuning | Yes, directly through gradient updates | First learning stage | ✅ POC subset preparation complete; normalization/NeMo conversion pending |
-| Validation | `nsc_dev_3h` → `poc/dev_50.jsonl` | 50 utterances, independently checked | Baseline comparison, tuning, checkpoint/model decisions | No gradients; influences development indirectly | Before and during fine-tuning development | ✅ POC subset preparation complete; normalization/NeMo conversion pending |
+| Train | `nsc_query_5h` → `poc/nemo/train_300.jsonl` | 300 selected utterances | Fine-tuning | Yes, directly through gradient updates | First learning stage | ✅ Normalized/converted; selected paths found; sample inspected; training pending |
+| Validation | `nsc_dev_3h` → `poc/nemo/dev_50.jsonl` | 50 selected utterances | Baseline comparison, tuning, checkpoint/model decisions | No gradients; influences development indirectly | Before and during fine-tuning development | ✅ Normalized/converted; selected paths found; sample inspected; inference/WER pending |
 | Test | `nsc_test` | 3,684 utterances / ~7 h, upstream | Final held-out Singapore-English evaluation | No gradients or development tuning | After model/configuration is frozen | Not started; no local download or evaluation documented |
 | External benchmark | `gigaspeech_test` | 19,930 utterances / 35.4 h, upstream | Out-of-domain (OOD) generalization/regression check | No gradients or routine tuning | After NSC test evaluation | Not started; no local download or evaluation documented |
 
-Preparation complete here means **source-format subsets created and independently checked**. Normalized transcripts, NeMo manifests, model weight updates, and validation WER remain pending. The progression below describes the intended experiment, not completed model execution.
+Preparation complete here means **subsets checked, normalized/model-facing manifests produced, selected audio-file existence checked, and samples inspected**. Audio decoding, NeMo loader consumption, model weight updates, and validation WER remain pending. The progression below describes the intended experiment, not completed model execution.
 
 ```text
 Train: nsc_query_5h → 300-utterance POC subset
@@ -271,11 +275,11 @@ Example development record (ID and audio filename shortened):
 {"id":"...","speaker":"00017","duration":6.24,"text":"okay sure <v-noise> uh good afternoon may i have your contact number in case the line like get uh disconnected","audio":"audio/...flac"}
 ```
 
-The inspected train/validation records share the fields `id`, `speaker`, `duration`, `text`, and `audio`, with relative FLAC paths. These source manifests have not yet been converted to NeMo format.
+The inspected train/validation records share the fields `id`, `speaker`, `duration`, `text`, and `audio`, with relative FLAC paths. The original manifests remain in source format; model-facing derived copies are produced in the [conversion section](#nemotron-compatible-manifest-conversion--complete).
 
 ## Source manifest checks — complete
 
-The [helper-script index](../../scripts/guide-02/README.md) lists each tool's inputs and whether it writes output. These checks inspect manifest records; referenced-audio integrity and model execution remain separate, unreported checks.
+The [helper-script index](../../scripts/guide-02/README.md) lists each tool's inputs and whether it writes output. These checks inspect manifest records. Full-source audio integrity and model execution remain unreported; later conversion checks file existence for the selected POC records only.
 
 Current original manifests on the Brev host, unchanged:
 
@@ -414,17 +418,17 @@ These figures describe the eligible source pools; the read-only check creates no
 | Item | Current POC policy |
 | --- | --- |
 | `<unk>` | Exclude the whole utterance from the train/validation POC |
-| `<v-noise>`, `<noise>` | Keep the utterance; remove the annotation token later during transcript normalization |
+| `<v-noise>`, `<noise>` | Keep the utterance; remove annotation tokens during the completed normalization step |
 | Local speech such as `lah`, `wah`, `ya`, `mm` | Keep as normal speech |
 | Original manifests | Never modify; write derived data separately |
 
 Excluding `<unk>` is a pragmatic tutorial choice, not a claim that these utterances are bad data. The tag indicates speech was not confidently transcribed; deleting only the token could leave spoken content without corresponding text and create audio/text misalignment. We are deliberately avoiding manual relabeling. The eligible **2,158 train records / 4.59 h** and **1,225 validation records / 2.71 h** comfortably exceed the chosen 300/50 POC sizes.
 
-The earlier manual-audio-review note remains future work for a more rigorous data-quality project. No individual annotations are corrected in this POC. The generator below excludes `<unk>` utterances; noise-token normalization remains pending.
+The earlier manual-audio-review note remains future work for a more rigorous data-quality project. No individual annotations are corrected in this POC. The generator below excludes `<unk>` utterances; the later normalization script removes only the two approved noise-tag types.
 
 <a id="transcript-normalization--planned"></a>
 
-Apply this policy in the [next transcript-normalization step](#next-transcript-normalization--planned) before NeMo conversion or WER. Normalized manifests have not been created; keep original manifests unchanged.
+The [completed normalization step](#transcript-annotation-normalization--complete) applies this policy to separate derived files, preserving the original manifests. Annotation cleanup remains distinct from final WER-scoring choices.
 
 <a id="next-create-tiny-deterministic-poc-subsets--planned"></a>
 <a id="next-data-preparation-on-the-compute-node--planned"></a>
@@ -450,13 +454,25 @@ mkdir -p ~/data/nsc/poc
 ```
 
 ```text
-~/data/nsc/
-├── nsc_query_5h/          # source
-├── nsc_dev_3h/            # source
-└── poc/                   # derived POC manifests
-    ├── train_300.jsonl
-    └── dev_50.jsonl
+/home/ubuntu/data/nsc/
+├── nsc_query_5h/
+│   ├── manifest.jsonl                 # original training source
+│   └── audio/                         # original training FLAC files
+├── nsc_dev_3h/
+│   ├── manifest.jsonl                 # original validation source
+│   └── audio/                         # original validation FLAC files
+└── poc/
+    ├── train_300.jsonl                # selected source-format records
+    ├── dev_50.jsonl
+    ├── normalized/
+    │   ├── train_300.jsonl            # noise annotations removed from text
+    │   └── dev_50.jsonl
+    └── nemo/
+        ├── train_300.jsonl            # model-facing manifest
+        └── dev_50.jsonl
 ```
+
+Current lineage: **source manifest → filter/sample → POC subset → transcript-text cleanup → normalized manifest → resolve paths/map fields → Nemotron manifest**. All earlier stages remain. Source audio stays in its original directories; neither new script modifies it. Executed scripts live separately in `/home/ubuntu/work/nemotron-poc/`, with version-controlled copies under `scripts/guide-02/`; committing them does not deploy them to Brev.
 
 Successful command from the Brev host:
 
@@ -613,22 +629,247 @@ ID overlap:      0
 
 All 111 eligible train speakers are represented; validation contains 50 distinct speakers. The POC manifests share no speakers or utterance IDs. Both helpers use the pinned NeMo image with data/tooling mounted read-only and no GPU request; the commands above are reproduction examples. Source and derived checks remain separate evidence.
 
-### Current verified POC datasets
+<a id="current-verified-poc-datasets"></a>
+
+### Verified source-format POC subsets
 
 | Role | Manifest on the Brev host | Utterances | Speakers | Duration | `<unk>` |
 | --- | --- | ---: | ---: | ---: | ---: |
 | Train | `/home/ubuntu/data/nsc/poc/train_300.jsonl` | 300 | 111 | ~0.66 h | 0 |
 | Validation | `/home/ubuntu/data/nsc/poc/dev_50.jsonl` | 50 | 50 | ~0.11 h | 0 |
 
-Speaker overlap: **0**. Utterance-ID overlap: **0**. These host paths are mapped to container paths by the bind mounts above; they are not laptop paths. Noise annotation tokens remain present until normalization.
+Speaker overlap: **0**. Utterance-ID overlap: **0**. These host paths map to container paths through the bind mounts above. Noise tokens remain in these preserved source-format subsets; the normalized copies below contain the cleaned transcripts.
 
-## Next: transcript normalization — planned
+<a id="next-transcript-normalization--planned"></a>
 
-Define and implement removal of `<v-noise>` and `<noise>` annotation tokens from the derived transcripts while preserving actual words, identifiable Singapore-English/Singlish speech (`lah`, `wah`, `ya`, `mm`), and fillers. Record and apply the policy consistently for train/validation. Create new derived artifacts, either as separate normalized manifests or reproducibly within NeMo conversion; preserve the original source manifests and generated subset files. Normalization has not been performed.
+## Transcript annotation normalization — complete
 
-After normalization: **NeMo manifest conversion → baseline inference → baseline validation WER → training smoke test → fine-tuning**. Use container-valid audio paths when converting. All these steps, checkpointing, and test/external evaluation remain pending.
+**Milestone recorded:** 2026-10-08 documentation sync. The commands and outputs in this section and the conversion section are the operator's reported Brev-node results, not commands independently executed by the guide maintainer.
 
-Fixed seed **42** and separate deterministic RNG streams are already part of the sampling design. SHA-256 artifact hashing and byte-for-byte regeneration testing can add rigor in stricter production data pipelines; they are intentionally not required blockers for this tutorial POC.
+### Implemented policy and host script
+
+The operator created [`normalize_transcripts.py`](../../scripts/guide-02/normalize_transcripts.py) in the SSH-connected host workspace:
+
+```bash
+cd ~/work/nemotron-poc
+vim normalize_transcripts.py
+```
+
+Its repository copy lives under `scripts/guide-02/`; the executed copy lives under `/home/ubuntu/work/nemotron-poc/`. A GitHub commit does not deploy it to Brev, and a checkout on the node is not confirmed. See the [tooling index](../../scripts/guide-02/README.md#scripts-and-host-paths) for this distinction.
+
+The script replaces only `<v-noise>` and `<noise>` with spaces, collapses whitespace, and trims the transcript. It preserves actual words, identifiable Singlish particles, fillers, case, punctuation, and every other record field (`id`, `speaker`, `duration`, `audio`, and other metadata). It stops on unexpected `<...>` tags, including a surviving `<unk>`, or an empty cleaned transcript; it does not silently drop selected utterances.
+
+```python
+cleaned = cleaned.replace(tag, " ")
+```
+
+A space prevents adjacent words from joining.
+
+```python
+cleaned = " ".join(cleaned.split())
+```
+
+Whitespace cleanup does not rewrite the words. Whole `<unk>` utterances were excluded during subset selection; normalization does not delete unknown speech from the audio. This is **annotation cleanup**, not audio denoising or a complete WER-scoring policy.
+
+```python
+destination.open("x", encoding="utf-8")
+```
+
+Exclusive creation protects an existing destination. A rerun to that path should fail; preserve validated artifacts rather than deleting them blindly.
+
+### Normalization execution and reported output
+
+Created the separate output directory:
+
+```bash
+mkdir -p ~/data/nsc/poc/normalized
+```
+
+**Train:**
+
+```bash
+docker run --rm \
+  -v /home/ubuntu/data/nsc/poc:/data/poc:ro \
+  -v /home/ubuntu/data/nsc/poc/normalized:/output:rw \
+  -v /home/ubuntu/work/nemotron-poc:/work:ro \
+  nvcr.io/nvidia/nemo-speech:26.07.00 \
+  python3 /work/normalize_transcripts.py \
+    /data/poc/train_300.jsonl \
+    /output/train_300.jsonl
+```
+
+```text
+Input:             /data/poc/train_300.jsonl
+Output:            /output/train_300.jsonl
+Records written:   300
+Text changed:      61
+Removed <v-noise>: 87
+Removed <noise>: 5
+```
+
+**Validation:**
+
+```bash
+docker run --rm \
+  -v /home/ubuntu/data/nsc/poc:/data/poc:ro \
+  -v /home/ubuntu/data/nsc/poc/normalized:/output:rw \
+  -v /home/ubuntu/work/nemotron-poc:/work:ro \
+  nvcr.io/nvidia/nemo-speech:26.07.00 \
+  python3 /work/normalize_transcripts.py \
+    /data/poc/dev_50.jsonl \
+    /output/dev_50.jsonl
+```
+
+```text
+Input:             /data/poc/dev_50.jsonl
+Output:            /output/dev_50.jsonl
+Records written:   50
+Text changed:      4
+Removed <v-noise>: 7
+Removed <noise>: 0
+```
+
+The reported 61/4 changed transcripts and removal counts (train: 87 `<v-noise>`, 5 `<noise>`; validation: 7/0) agree with the earlier POC inventory. Inputs and tooling were read-only; only the normalized-output host mount was writable. No audio was copied, resampled, denoised, or otherwise modified.
+
+A later independent tag-inspection attempt failed because the helper was missing from the runtime workspace; it did not produce a successful audit. The completed evidence is these normalization reports and their agreement with the earlier inventory. Conversion below subsequently parsed every normalized record. See the [deployment note](#missing-runtime-helper) for the failed check; no suggested `grep` check is claimed complete.
+
+## Nemotron-compatible manifest conversion — complete
+
+### Recipe choice: five fields
+
+Before finalizing the converter, the operator reviewed [NVIDIA's fine-tuning article](https://developer.nvidia.com/blog/fine-tuning-nvidia-nemotron-for-saudi-arabic-dialects-with-a-path-to-other-languages/) and its [prompt-aware notebook](https://github.com/nvidia-riva/tutorials/blob/main/asr-finetune-nemotron-3.5-asr-streaming-prompt.ipynb). The notebook emits the usual three ASR fields plus `lang` and `target_lang`. We chose to follow that five-field format for this Nemotron recipe; it is not a universal requirement for every NeMo model or loader.
+
+| Field | Meaning in our prepared manifest |
+| --- | --- |
+| `audio_filepath` | Absolute audio-file path visible inside the runtime container |
+| `duration` | Seconds carried over from source metadata |
+| `text` | Normalized reference transcript |
+| `lang` | Language metadata included to follow the example recipe |
+| `target_lang` | Target-language metadata for the prompt-aware recipe |
+
+Both language fields are `en-US`, following the notebook. The [model card](https://huggingface.co/nvidia/nemotron-3.5-asr-streaming-0.6b#supported-languages) lists `en-US` and `en-GB` as supported English locales. This choice does not relabel Singapore recordings as American speech or establish an optimal prompt; we do not invent `en-SG`. These are metadata fields, not a manually appended `<en-US>` transcript token. Exact loader/configuration consumption remains to be exercised during model execution and training.
+
+### Audio paths and provenance
+
+Source-format records contain a relative path:
+
+```json
+{
+  "audio": "audio/example.flac"
+}
+```
+
+For train, `audio_root = /data/nsc/nsc_query_5h` plus `audio/example.flac` resolves to `/data/nsc/nsc_query_5h/audio/example.flac`. Validation uses `/data/nsc/nsc_dev_3h`. The root is the original dataset directory, **not its `audio/` subdirectory**, because the relative field already includes `audio/`. Do not resolve against the normalized-manifest directory.
+
+These absolute paths are **container paths**. Future inference/training must preserve the `/data/nsc` mount layout or regenerate manifests for another layout. `/output` determines the manifest's destination; embedded audio paths still point to `/data/nsc/...`.
+
+The executed converter writes only the five fields above, omitting `id` and `speaker`. Those remain in the POC/normalized manifests for provenance and speaker checks. Do not run `check_split_overlap.py` directly on the final five-field files: that helper expects `id` and `speaker`.
+
+### Conversion execution and reported output
+
+Created [`convert_to_nemo_manifest.py`](../../scripts/guide-02/convert_to_nemo_manifest.py) on the host and its output directory:
+
+```bash
+cd ~/work/nemotron-poc
+vim convert_to_nemo_manifest.py
+```
+
+```bash
+mkdir -p ~/data/nsc/poc/nemo
+```
+
+**Train:**
+
+```bash
+docker run --rm \
+  -v /home/ubuntu/data/nsc:/data/nsc:ro \
+  -v /home/ubuntu/data/nsc/poc/nemo:/output:rw \
+  -v /home/ubuntu/work/nemotron-poc:/work:ro \
+  nvcr.io/nvidia/nemo-speech:26.07.00 \
+  python3 /work/convert_to_nemo_manifest.py \
+    /data/nsc/poc/normalized/train_300.jsonl \
+    /data/nsc/nsc_query_5h \
+    /output/train_300.jsonl \
+    --language en-US
+```
+
+```text
+Input:           /data/nsc/poc/normalized/train_300.jsonl
+Output:          /output/train_300.jsonl
+Records written: 300
+Language:        en-US
+Audio paths:     verified
+```
+
+**Validation:**
+
+```bash
+docker run --rm \
+  -v /home/ubuntu/data/nsc:/data/nsc:ro \
+  -v /home/ubuntu/data/nsc/poc/nemo:/output:rw \
+  -v /home/ubuntu/work/nemotron-poc:/work:ro \
+  nvcr.io/nvidia/nemo-speech:26.07.00 \
+  python3 /work/convert_to_nemo_manifest.py \
+    /data/nsc/poc/normalized/dev_50.jsonl \
+    /data/nsc/nsc_dev_3h \
+    /output/dev_50.jsonl \
+    --language en-US
+```
+
+```text
+Input:           /data/nsc/poc/normalized/dev_50.jsonl
+Output:          /output/dev_50.jsonl
+Records written: 50
+Language:        en-US
+Audio paths:     verified
+```
+
+The three positional arguments are `input_manifest` (normalized records), `audio_root` (original dataset directory), and `output_manifest` (new NeMo JSONL). `--language en-US` fills both language fields. Like normalization, conversion refuses to overwrite an existing output.
+
+| Host path | Container path | Access |
+| --- | --- | --- |
+| `/home/ubuntu/data/nsc` | `/data/nsc` | Read-only |
+| `/home/ubuntu/work/nemotron-poc` | `/work` | Read-only |
+| `/home/ubuntu/data/nsc/poc/nemo` | `/output` | Read/write |
+
+Both preparation steps used the same version-tagged NeMo Speech image; no image digest was recorded. Neither requested a GPU, and Python ran in the container without a host Python installation. The image's default execution context was retained after the earlier UID issue. **Ownership checks/corrections for `normalized/` and `nemo/` were not reported**; earlier ownership correction covered only the two original POC subset files.
+
+**What conversion establishes:** It produced 300/50 records and checked that every embedded audio path resolves to an existing file within the supplied source root. It does not decode FLAC, check sample rate/channels, remeasure durations, establish transcription accuracy or loader compatibility, or prove training fits in L4 memory. Durations are copied from metadata.
+
+### Output-manifest sample inspection — complete
+
+The operator printed one record from each JSONL file:
+
+```bash
+head -n 1 ~/data/nsc/poc/nemo/train_300.jsonl
+head -n 1 ~/data/nsc/poc/nemo/dev_50.jsonl
+```
+
+`head -n 1` prints the first line, one record here. Actual train record:
+
+```json
+{"audio_filepath": "/data/nsc/nsc_query_5h/audio/imda-2021-part6-10105-channel001m-0047676-0048681.flac", "duration": 10.05, "text": "uh do you have a preferred timing two p m let me check whether the two p m slot is available", "lang": "en-US", "target_lang": "en-US"}
+```
+
+Actual validation record:
+
+```json
+{"audio_filepath": "/data/nsc/nsc_dev_3h/audio/imda-2021-part6-07552-channel001m-0019035-0019311.flac", "duration": 2.76, "text": "uh correct", "lang": "en-US", "target_lang": "en-US"}
+```
+
+These observed examples show the chosen five fields, correct source directories, and preserved spoken fillers such as `uh`. This is sample inspection, not a complete independent audit of every output field. **Manifest conversion complete** means files produced, all selected file paths found, and these two records inspected; no NeMo training batch, decoding, inference, or training success is claimed.
+
+## Next: single-utterance GPU inference — planned
+
+Create/review `baseline_smoke.py` on the node, then run the **original pretrained model on one recording from the prepared NSC validation manifest**. Use the L4, the existing NeMo image, the persistent Hugging Face cache, and the `/data/nsc` audio mount; print the reference and predicted transcript.
+
+The script was proposed in the tutorial conversation, but saving or running it has not been confirmed. It is not added here as a validated script. No inference command, prediction, WER, runtime, or GPU-memory result is reported. A one-file `transcribe()` run is a functional smoke test, not a cache-aware streaming benchmark or a final baseline measurement.
+
+After that succeeds, run the fixed **50-utterance validation baseline and WER**. First finalize and record case/punctuation handling, language-tag removal, decoder settings, language prompt, and streaming context; use comparable settings before and after fine-tuning.
+
+The [NVIDIA notebook](https://github.com/nvidia-riva/tutorials/blob/main/asr-finetune-nemotron-3.5-asr-streaming-prompt.ipynb) points to prompt-aware fine-tuning configuration and cache-aware streaming evaluation. This is the intended upstream route; the full recipe and L4 training configuration are not locally validated.
+
+Fixed seed **42** and deterministic sampling remain part of the POC design. Artifact hashing or byte-for-byte regeneration remains optional production rigor, not a tutorial blocker.
 
 ## Completion boundaries and next step
 
@@ -643,7 +884,7 @@ Fixed seed **42** and separate deterministic RNG streams are already part of the
 | NSC training/query download and extraction | Complete: 2,289 records, 214M |
 | NSC dev download and extraction | Complete: 1,316 records |
 | Four-stage data strategy and workflow | Documented; execution remains pending |
-| Source train/dev manifest inspection | Complete for reported source checks; referenced-audio integrity not yet reported |
+| Source train/dev manifest inspection | Complete for reported source checks; full-source audio integrity not audited |
 | Speaker-overlap verification | Complete for train/validation: 111 / 64 speakers, 0 overlap; NSC test checks pending |
 | Utterance-ID overlap verification | Complete for train/validation: 0 overlap; NSC test checks pending |
 | Annotation-token inventory and counts | Complete for both full source manifests: `<v-noise>`, `<unk>`, `<noise>` |
@@ -657,9 +898,12 @@ Fixed seed **42** and separate deterministic RNG streams are already part of the
 | Derived annotation-tag validation | Complete: `<unk>` absent; train `<v-noise>` 87 / `<noise>` 5, validation `<v-noise>` 7 |
 | Derived speaker/utterance-ID validation | Complete: 111 / 50 speakers; 0 shared speakers and 0 shared IDs |
 | Independent derived-subset validation | Complete for the ownership, count, tag, speaker, and separation checks above |
-| Transcript normalization output | Not yet created; remaining transcript/scoring rules pending |
-| Annotation-policy application | Partial: generator excludes `<unk>`; noise-token normalization pending |
-| NeMo manifest conversion | Not yet complete |
+| Transcript normalization output | Complete: 300/50 records; 61/4 texts changed; approved noise tags removed; independent rerun failed on missing helper |
+| Annotation-policy application | Complete for selected data: whole `<unk>` utterances excluded; noise-token cleanup applied; final scoring policy pending |
+| Nemotron manifest conversion | Complete: five fields, `en-US`; 300/50 records and selected file existence reported |
+| Output-manifest sample inspection | Complete: first record from each NeMo manifest inspected |
+| New normalized/NeMo output ownership | Not reported; earlier ownership correction covered only original POC subset files |
+| Single-utterance NSC GPU smoke test | Next; `baseline_smoke.py` saving/deployment/execution unconfirmed |
 | Baseline inference / validation WER | Not yet complete |
 | Training smoke test | Not yet complete |
 | Fine-tuning | Not yet complete |
@@ -671,14 +915,15 @@ Fixed seed **42** and separate deterministic RNG streams are already part of the
 | Performance benchmarking | Not yet complete |
 | True streaming inference | Not yet complete |
 | Manual annotation/audio review | Future work; excluded from this POC |
+| NeMo Curator curation | Future work; no installation or run performed |
 
 ### End-of-day checkpoint
 
-**Current checkpoint:** POC train/validation subsets have been created and independently validated for ownership, counts, tags, speakers, and separation. This is the stopping point recorded in the 2026-10-07 documentation sync; no normalization or model execution result is added.
+**Current checkpoint (2026-10-08 documentation sync):** Normalized train/validation manifests and five-field Nemotron manifests have been created. Conversion reported 300/50 records and verified referenced file paths; one final record per split was inspected. Actual decoding, inference, and training remain unexecuted.
 
-**Next session:** Define and implement transcript normalization for `<v-noise>` and `<noise>`, preserving spoken words and original manifests, then convert the derived POC data into NeMo ASR manifests.
+**Next session:** Create/review and run the one-utterance NSC GPU inference smoke test, using the original pretrained model, prepared validation manifest, L4, existing NeMo image, and persistent HF cache; print reference and prediction.
 
-Later: baseline inference → baseline validation WER → training smoke test → fine-tune on train → validation/development loop → freeze checkpoint/configuration → `nsc_test` → `gigaspeech_test`. Both evaluations remain unstarted. The infrastructure progression remains Docker validation → actual Nemotron inference → streaming inference → package the workload → SLURM; streaming and scheduler work remain future milestones.
+Later: fixed validation baseline/WER under recorded scoring settings → training smoke test → fine-tune on train → validation/development loop → freeze checkpoint/configuration/scoring → `nsc_test` → `gigaspeech_test`. Both evaluations remain unstarted. The infrastructure progression remains Docker validation → actual Nemotron inference → streaming inference → package the workload → SLURM; streaming and scheduler work remain future milestones.
 
 ## Troubleshooting notes
 
@@ -702,17 +947,37 @@ The interpreter was located at `/opt/venv/bin/python3`, but invoking it under th
 /opt/venv/bin/python3: Permission denied
 ```
 
-Do not assume a vendor container supports arbitrary host UID/GID execution. This POC uses the image's default execution context and constrains host writes with read-only source/tooling mounts and a writable derived-output mount. The UID option is omitted from the successful command; generated-file ownership was explicitly corrected afterward as recorded above.
+Do not assume a vendor container supports arbitrary host UID/GID execution. This POC uses the image's default context with read-only source/tooling and a writable derived-output mount. Ownership was corrected only for the original two subset files; no check/correction was reported for the newer normalized or NeMo files.
+
+### Missing runtime helper
+
+After normalization, an independent tag-inspection rerun failed:
+
+```text
+python3: can't open file '/work/inspect_transcript_tags.py': [Errno 2] No such file or directory
+```
+
+The operator checked the host workspace:
+
+```bash
+ls -lh ~/work/nemotron-poc/*.py
+```
+
+At that point it contained `check_poc_eligibility.py`, `check_split_overlap.py`, `create_poc_subsets.py`, and `normalize_transcripts.py`; the inspection helper was absent. Presence in GitHub and presence in the remote runtime are separate facts. The audit failed, and no successful suggested `grep` result was reported. This does not replace the earlier subset inventory or normalization reports with a new independent audit.
 
 ### Unexpected output: inspect the actual script
 
 During node validation, `check_split_overlap.py` was accidentally overwritten with transcript-tag inspection code. Unexpected output prompted inspection of the script, preservation of the incorrect copy as `check_split_overlap.py.bad` locally, restoration of the known-good version, and rerunning validation. The incorrect artifact is not committed. Inspect the program producing unexpected output before drawing conclusions about the data.
 
+### NeMo Curator — future work
+
+The operator considered Curator after reviewing the [NVIDIA article](https://developer.nvidia.com/blog/fine-tuning-nvidia-nemotron-for-saudi-arabic-dialects-with-a-path-to-other-languages/), which used audio standardization and quality scoring/filtering. We chose to keep this small POC's completed preparation pipeline; no Curator installation or curation run was performed. A future experiment can inspect quality-score distributions while preserving challenging but usable Singapore English and keeping evaluation sets fixed. Do not transfer Arabic-corpus thresholds directly to NSC. Manual listening/relabeling of possible `<unk>` issues also remains future work.
+
 <a id="single-file-inference-reference--not-yet-executed"></a>
 
 ## Appendix: optional single-file inference smoke test — not yet executed
 
-These previously prepared commands remain available for a one-file check; they are not evidence of completed baseline inference. The current next milestone is transcript normalization above. Run these commands in the GPU host's shell, including when connected over SSH. They require no notebook, GUI, or microphone. This is whole-file inference with a streaming-capable model; true streaming is a later milestone.
+These previously prepared commands remain an optional generic English one-file alternative, not evidence of completed inference. The main next milestone is the [prepared NSC validation smoke test](#next-single-utterance-gpu-inference--planned) above. Run these commands in the GPU host's shell over SSH; no notebook, GUI, or microphone is required. This is whole-file inference with a streaming-capable model; true streaming is a later milestone.
 
 ### 1. Create an audio directory and download a small sample
 

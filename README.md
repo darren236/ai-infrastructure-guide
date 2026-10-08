@@ -36,24 +36,24 @@ Use the [current progress](PROGRESS.md#current-state) for the latest checkpoint,
 
 **Start here:** Read the [data strategy](docs/guides/02-nemotron-streaming-singapore-english.md#data-strategy-and-experiment-overview), then follow [node preflight](docs/guides/02-nemotron-streaming-singapore-english.md#node-preflight--complete), [NeMo/model setup](docs/guides/02-nemotron-streaming-singapore-english.md#nemo-container-and-model-on-gpu--complete), and [NSC download](docs/guides/02-nemotron-streaming-singapore-english.md#nsc-trainingquery-and-development-data--downloaded-and-extracted). The [guide section map](docs/guides/02-nemotron-streaming-singapore-english.md#guide-sections) links the detailed reading order; the hands-on agenda continues below.
 
-1. [Verify source manifests on the node](docs/guides/02-nemotron-streaming-singapore-english.md#split-construction-and-hands-on-verification) — counts checked; referenced-audio integrity not yet reported.
+1. [Verify source manifests on the node](docs/guides/02-nemotron-streaming-singapore-english.md#split-construction-and-hands-on-verification) — counts checked; full-source audio integrity not audited.
 2. [Verify speaker and utterance-ID separation](docs/guides/02-nemotron-streaming-singapore-english.md#split-construction-and-hands-on-verification) — complete for train/validation; NSC test checks pending.
 3. [Inspect and count transcript annotation tokens](docs/guides/02-nemotron-streaming-singapore-english.md#transcript-annotation-audit--complete) and [measure POC eligibility](docs/guides/02-nemotron-streaming-singapore-english.md#poc-eligibility-impact--complete) — complete; annotation policy decided.
 4. [Create deterministic speaker-aware POC subsets](docs/guides/02-nemotron-streaming-singapore-english.md#deterministic-poc-subset-generation--complete) — 300/50 generated; ownership, counts, tags, speakers, and separation independently checked.
-5. [Normalize derived transcripts](docs/guides/02-nemotron-streaming-singapore-english.md#next-transcript-normalization--planned): remove `<v-noise>`/`<noise>` tokens while preserving actual words, local speech, and fillers; record any additional scoring rules.
-6. Convert derived data to NeMo manifests with container-visible audio paths.
-7. Run baseline inference on validation and record WER.
+5. [Normalize derived transcripts](docs/guides/02-nemotron-streaming-singapore-english.md#transcript-annotation-normalization--complete) — complete: noise-tag cleanup and whitespace normalization preserve spoken words and metadata; final scoring policy pending.
+6. [Convert to Nemotron manifests](docs/guides/02-nemotron-streaming-singapore-english.md#nemotron-compatible-manifest-conversion--complete) — complete: five fields, 300/50 records, selected audio paths found, and one record per split inspected.
+7. [Run one validation utterance on GPU](docs/guides/02-nemotron-streaming-singapore-english.md#next-single-utterance-gpu-inference--planned) — next, unexecuted; then run the fixed 50-utterance baseline and WER under recorded scoring/decoding settings.
 8. Fine-tune on train only, starting with a training smoke test.
 9. Use validation for development/model selection.
 10. Freeze the model/configuration, normalization, and decoding settings.
 11. Evaluate `nsc_test` for final held-out Singapore-English results.
 12. Evaluate `gigaspeech_test` for external/OOD generalization and regressions after the NSC test.
 
-**Status:** Preflight, NeMo/model loading, source inspection/separation, annotation auditing, eligibility analysis, the POC policy, subset generation, and independent subset checks are complete. The POC has **300 train utterances / 111 speakers / ~0.66 h** and **50 validation utterances / 50 speakers / ~0.11 h**, selected using seed 42. Ownership was corrected for the derived files; neither subset contains `<unk>`, and they share no speakers or IDs. Normalized output and steps 6–12 remain pending. NSC test/GigaSpeech preparation and evaluation are unvalidated.
+**Status:** Setup, source checks, POC subset preparation/validation, transcript normalization, and five-field Nemotron manifest conversion are complete for the reported checks. Selected subsets have **300 train utterances / 111 speakers / ~0.66 h** and **50 validation utterances / 50 speakers / ~0.11 h**, using seed 42, no `<unk>`, and no shared speakers/IDs. Conversion reported 300/50 records and found selected audio files; one final record per split was inspected. This establishes preparation, not audio decoding, loader compatibility, inference, or training. Ownership correction covered only the original subset files; new-output ownership was not reported.
 
-**Current checkpoint:** POC train/validation subsets have been created and independently validated. See the [checked pipeline](docs/guides/02-nemotron-streaming-singapore-english.md#current-pipeline-status) and [end-of-day handoff](docs/guides/02-nemotron-streaming-singapore-english.md#end-of-day-checkpoint). NSC test and GigaSpeech downloads/evaluations are not documented; both evaluations are unstarted.
+**Current checkpoint:** Normalized and model-facing manifests exist under `poc/normalized/` and `poc/nemo/`, preserving earlier source/POC stages. See the [checked pipeline](docs/guides/02-nemotron-streaming-singapore-english.md#current-pipeline-status) and [handoff](docs/guides/02-nemotron-streaming-singapore-english.md#end-of-day-checkpoint). Baseline predictions/WER, training, NSC test, and GigaSpeech evaluation remain unrun; no test/benchmark downloads are documented.
 
-**Next session:** Define and implement [transcript normalization](docs/guides/02-nemotron-streaming-singapore-english.md#next-transcript-normalization--planned), then convert NeMo manifests. Remove `<v-noise>`/`<noise>` tokens while preserving spoken words, local speech, and fillers. Preserve originals; manual relabeling is excluded from this POC. The optional one-WAV test remains unexecuted.
+**Next session:** Create/review and run the [one-utterance NSC GPU inference smoke test](docs/guides/02-nemotron-streaming-singapore-english.md#next-single-utterance-gpu-inference--planned) with the pretrained model, L4, existing container, persistent HF cache, and prepared validation manifest; print reference and prediction. `baseline_smoke.py` saving/execution is unconfirmed. Finalize scoring/decoding settings before the fixed 50-utterance baseline/WER. Curator experiments and manual annotation review remain future work; the generic one-WAV appendix is an unexecuted alternative.
 
 ## Future guides
 
@@ -73,7 +73,9 @@ ai-infrastructure-guide/
 │       ├── check_split_overlap.py
 │       ├── inspect_transcript_tags.py
 │       ├── check_poc_eligibility.py
-│       └── create_poc_subsets.py
+│       ├── create_poc_subsets.py
+│       ├── normalize_transcripts.py
+│       └── convert_to_nemo_manifest.py
 └── docs/
     └── guides/
         ├── README.md         # Short directory index
@@ -81,7 +83,7 @@ ai-infrastructure-guide/
         └── 02-nemotron-streaming-singapore-english.md
 ```
 
-The [written guides](docs/guides/README.md) contain commands, architecture explanations, and recorded evidence. Runnable assets live under `scripts/guide-NN/`; the [Guide 02 tooling index](scripts/guide-02/README.md) explains the four helpers used in recorded node runs. The [progress log](PROGRESS.md) separates current status from historical milestones; the [roadmap](ROADMAP.md) holds future topics. Add scripts or configuration when an actual guide step needs them, and link from that guide.
+The [written guides](docs/guides/README.md) contain commands, architecture explanations, and recorded evidence. Runnable assets live under `scripts/guide-NN/`; the [Guide 02 tooling index](scripts/guide-02/README.md) explains six helpers used in reported node runs. Repository scripts and the Brev workspace are separate locations; a commit does not deploy a helper to the node. The [progress log](PROGRESS.md) separates current status from historical milestones; the [roadmap](ROADMAP.md) holds future topics.
 
 ## Documentation standard
 

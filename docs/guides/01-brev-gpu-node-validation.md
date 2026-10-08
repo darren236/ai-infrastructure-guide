@@ -319,7 +319,7 @@ docker run --rm --gpus all \
 
 Framework availability and model placement lead to application validation. A GPU tensor computation with synchronization and a checked result would test actual computation; an ASR application must process audio and produce a transcript. Neither successful application result has been reported yet.
 
-Continue in [Guide 02 — Adapting NVIDIA Nemotron 3.5 Streaming ASR to Singapore English](02-nemotron-streaming-singapore-english.md). It is intentionally a small POC/tutorial. Model loading, source checks, annotation policy, and generation/independent checks of 300 train / 50 validation utterances are complete. Transcript normalization is next; NeMo manifest conversion, baseline inference, training, checkpointing, and evaluation remain pending. A one-WAV inference reference is prepared but unexecuted.
+Continue in [Guide 02 — Adapting NVIDIA Nemotron 3.5 Streaming ASR to Singapore English](02-nemotron-streaming-singapore-english.md). This small POC has completed model loading, source/subset checks, transcript annotation cleanup, and Nemotron manifest preparation for 300 train / 50 validation utterances. Selected file existence and one final record per split were checked; decoding and model execution remain pending. The next step is one NSC validation utterance on GPU, followed by baseline WER and training. The generic one-WAV reference remains an unexecuted alternative.
 
 When a customer's framework workload fails, a minimal CUDA program can isolate the lower CUDA/driver/container stack. A successful compile, kernel launch, synchronization, and result check narrows the investigation; it does not establish that every workload requirement is satisfied. A standalone CUDA compile/kernel test remains unperformed here.
 
