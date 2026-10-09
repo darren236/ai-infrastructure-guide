@@ -12,12 +12,12 @@ Follow these eight layers in order. Each section states the question, the releva
 | [2. PCIe enumeration](#2-pcie-enumeration) | `lspci` enumerated the NVIDIA device |
 | [3. Linux kernel](#3-linux-kernel) | `uname -a` identified kernel `6.8.0-1069-gcp` |
 | [4. NVIDIA driver](#4-nvidia-driver) | Host `nvidia-smi` works; reported CUDA compatibility `13.2`, not an installed Toolkit version |
-| [5. CUDA runtime / Toolkit](#5-cuda-runtime--toolkit) | No host `nvcc` found; container devel image reports Toolkit `13.0`; actual CUDA computation pending |
+| [5. CUDA runtime / Toolkit](#5-cuda-runtime--toolkit) | No host `nvcc` found; container devel image reports Toolkit `13.0`; standalone CUDA kernel check pending |
 | [6. Container runtime](#6-container-runtime) | `docker info` and CUDA-container `docker run` validated GPU access |
 | [7. PyTorch / NeMo](#7-pytorch--nemo) | PyTorch detects CUDA/L4; NeMo imports and places Nemotron on GPU in Guide 02 |
-| [8. Application](#8-application) | Guide 02 prepares the ASR POC; actual transcription, training, and evaluation pending |
+| [8. Application](#8-application) | Guide 02 verifies one pretrained NSC transcription on GPU; full baseline/WER, training, and evaluation pending |
 
-**Current position:** Hardware/host visibility, driver access, container toolchain inspection, and framework access are recorded. We are preparing the layer 8 application POC; successful GPU computation or ASR inference is not yet claimed. For customer troubleshooting, start with the minimum relevant check and go deeper only when needed.
+**Current position:** Hardware/host visibility, driver access, container toolchain inspection, and framework access are recorded. Guide 02 reports one successful layer 8 ASR transcription on the L4 (October 9, 2026). Standalone CUDA/tensor checks, training, and benchmarking remain pending. For customer troubleshooting, start with the minimum relevant check and go deeper only when needed.
 
 **Evidence basis:** Operator-reported, sanitized milestones recorded on 2026-10-01 and 2026-10-05. NeMo results are linked from Guide 02. Raw recordings and instance connection details are excluded; no new remote checks were performed during this reorganization.
 
@@ -153,7 +153,7 @@ These image roles are described in NVIDIA's [CUDA container image documentation]
 
 A common production pattern keeps the host relatively minimal, with Linux and the NVIDIA driver providing GPU access. CUDA userspace libraries, PyTorch/NeMo, and application dependencies are supplied inside containers. The host does not require a CUDA Toolkit installation for this pattern; NVIDIA explicitly documents that distinction in the [NVIDIA Container Toolkit project](https://github.com/NVIDIA/nvidia-container-toolkit).
 
-The diagram separates host and container responsibilities. Container GPU access and framework/model loading have been validated; application execution remains pending.
+The diagram separates host and container responsibilities. Container GPU access and framework/model loading have been validated; Guide 02 also reports one successful pretrained ASR transcription on GPU.
 
 ```text
 Host
@@ -311,15 +311,15 @@ docker run --rm --gpus all \
   python -c "import nemo.collections.asr as n; m=n.models.ASRModel.from_pretrained('nvidia/nemotron-3.5-asr-streaming-0.6b'); m.cuda(); print(next(m.parameters()).device)"
 ```
 
-**Observed:** Restored `EncDecRNNTBPEModelWithPrompt`; parameter device `cuda:0`. This validates ASR import, model loading, and GPU placement. The persistent Hugging Face cache lives on the host. It does not yet demonstrate an audio transcript or training run.
+**Observed:** Restored `EncDecRNNTBPEModelWithPrompt`; parameter device `cuda:0`. This validates ASR import, model loading, and GPU placement. The persistent Hugging Face cache lives on the host. This loading check alone does not demonstrate an audio transcript or training run; subsequent single-record inference is linked below.
 
 ## 8. Application
 
 **Question:** Does the real workload produce the expected result?
 
-Framework availability and model placement lead to application validation. A GPU tensor computation with synchronization and a checked result would test actual computation; an ASR application must process audio and produce a transcript. Neither successful application result has been reported yet.
+Framework availability and model placement lead to application validation. On October 9, 2026, Guide 02 reported one successful pretrained NSC transcription on the L4. A standalone GPU tensor computation with synchronization and a checked result remains unperformed; the ASR result validates one application execution path.
 
-Continue in [Guide 02 — Adapting NVIDIA Nemotron 3.5 Streaming ASR to Singapore English](02-nemotron-streaming-singapore-english.md). This small POC has completed model loading, source/subset checks, transcript annotation cleanup, and Nemotron manifest preparation for 300 train / 50 validation utterances. Selected file existence and one final record per split were checked; decoding and model execution remain pending. The next step is one NSC validation utterance on GPU, followed by baseline WER and training. The generic one-WAV reference remains an unexecuted alternative.
+Continue in [Guide 02 — Adapting NVIDIA Nemotron 3.5 Streaming ASR to Singapore English](02-nemotron-streaming-singapore-english.md). This small POC has completed preparation for 300 train / 50 validation utterances and one pretrained GPU inference. Reference `uh correct` produced raw prediction `Uh correct. <en-US>` with an explicit prompt-aware non-Lhotse configuration. The next step is the fixed 50-record baseline/WER under consistent scoring/decoding policies; training remains pending. The generic one-WAV reference remains an unexecuted alternative.
 
 When a customer's framework workload fails, a minimal CUDA program can isolate the lower CUDA/driver/container stack. A successful compile, kernel launch, synchronization, and result check narrows the investigation; it does not establish that every workload requirement is satisfied. A standalone CUDA compile/kernel test remains unperformed here.
 
@@ -337,6 +337,6 @@ An SA should not run every diagnostic every time. Use the minimum test that answ
 
 ## Completion boundaries and next step
 
-Layers 1–7 have the specific access, inventory, and inspection evidence recorded above. They are not blanket claims that every feature or GPU workload works. Layer 8 is in progress through Guide 02 preparation; actual inference, training, true streaming, NCCL, and performance benchmarking remain unvalidated.
+Layers 1–7 have the specific access, inventory, and inspection evidence recorded above. They are not blanket claims that every feature or GPU workload works. Layer 8 now includes one verified pretrained NSC GPU transcription in Guide 02. Full validation baseline/WER, training, true streaming, NCCL, and performance/latency benchmarking remain unvalidated.
 
 Costs, storage configuration, and instance cleanup were not included in the Guide 01 milestone evidence and remain undocumented. See [progress](../../PROGRESS.md) for the dated milestone history and [Guide 02](02-nemotron-streaming-singapore-english.md) for the next application step.
