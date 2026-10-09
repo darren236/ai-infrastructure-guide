@@ -8,7 +8,7 @@ Build a small proof of concept (POC) and tutorial for fine-tuning `nvidia/nemotr
 
 ## Where this guide fits in the agenda
 
-[Guide 01](01-brev-gpu-node-validation.md#agenda-validate-the-stack-from-gpu-to-application) covers host, container, and framework access. This guide continues at **layer 8: application** with the Nemotron ASR POC. NeMo import and model placement extend the reported layer 7 checks. One pretrained NSC transcription on GPU is verified; training and dataset-level evaluation remain pending.
+[Guide 01](01-brev-gpu-node-validation.md#agenda-validate-the-stack-from-gpu-to-application) covers host, container, and framework access. This guide continues at **layer 8: application** with the Nemotron ASR POC. NeMo import and model placement extend the reported layer 7 checks. Pretrained GPU inference and an offline baseline on all 50 NSC validation recordings are verified; training and held-out evaluation remain pending.
 
 ### Guide sections
 
@@ -18,16 +18,16 @@ Build a small proof of concept (POC) and tutorial for fine-tuning `nvidia/nemotr
 | Node setup | [Preflight](#node-preflight--complete) · [NeMo and model loading](#nemo-container-and-model-on-gpu--complete) |
 | Source data | [NSC download](#nsc-trainingquery-and-development-data--downloaded-and-extracted) · [Manifest checks and annotation policy](#source-manifest-checks--complete) |
 | Derived POC data | [Subset generation](#deterministic-poc-subset-generation--complete) · [Independent validation](#derived-poc-subset-validation--complete) · [Normalization](#transcript-annotation-normalization--complete) · [Nemotron conversion](#nemotron-compatible-manifest-conversion--complete) |
-| Inference and next work | [Successful pretrained GPU smoke test](#single-utterance-pretrained-gpu-inference--complete) · [50-utterance baseline/WER](#next-50-utterance-validation-baseline-and-wer--planned) · [Completion boundaries and checkpoint](#completion-boundaries-and-next-step) |
+| Inference and next work | [Successful pretrained GPU smoke test](#single-utterance-pretrained-gpu-inference--complete) · [Completed 50-utterance baseline/WER](#pretrained-50-utterance-validation-baseline--complete) · [Next training smoke test](#next-training-smoke-test--planned) · [Completion boundaries and checkpoint](#completion-boundaries-and-next-step) |
 | References | [Helper scripts](../../scripts/guide-02/README.md) · [Troubleshooting](#troubleshooting-notes) · [Optional one-WAV test](#appendix-optional-single-file-inference-smoke-test--not-yet-executed) |
 
 ## Guide 02 workflow agenda
 
-[Node preflight](#node-preflight--complete), [NeMo/model loading](#nemo-container-and-model-on-gpu--complete), source inspection/separation, annotation auditing, subset generation/validation, [normalization](#transcript-annotation-normalization--complete), and [Nemotron manifest conversion](#nemotron-compatible-manifest-conversion--complete) are complete for the operator-reported checks. Conversion found all 300/50 selected audio files, and one final record per split was inspected. On **October 9, 2026**, the original pretrained model successfully transcribed the first validation recording on the L4. The fixed 50-utterance baseline/WER, training-loader checks, NSC test checks, and steps 8–12 remain pending.
+[Node preflight](#node-preflight--complete), [NeMo/model loading](#nemo-container-and-model-on-gpu--complete), source inspection/separation, annotation auditing, subset generation/validation, [normalization](#transcript-annotation-normalization--complete), and [Nemotron manifest conversion](#nemotron-compatible-manifest-conversion--complete) are complete for the operator-reported checks. Conversion found all 300/50 selected audio files, and one final record per split was inspected. On **October 9, 2026**, the original pretrained model successfully transcribed one recording and then all **50 fixed validation recordings** on the L4. The offline baseline reported **793 reference words and 10.84% WER**. Training-loader checks, NSC test checks, and steps 8–12 remain pending.
 
 ### Current pipeline status
 
-Checkmarks refer to the reported checks: GPU/framework access, model placement, data preparation, and now one successful pretrained audio transcription. A complete validation-set baseline and training remain pending.
+Checkmarks refer to the reported checks: GPU/framework access, model placement, data preparation, pretrained single-record inference, and the fixed 50-record offline validation baseline. Training, checkpoint comparison, held-out evaluation, and true streaming performance testing remain pending.
 
 ```text
 GPU / container infrastructure ✅
@@ -54,11 +54,14 @@ Nemotron-compatible manifest conversion ✅
         ↓
 Manifest sample inspection ✅
         ↓
-Single-utterance pretrained GPU inference ✅ ← CURRENT CHECKPOINT (2026-10-09)
+Single-utterance pretrained GPU inference ✅
         ↓
-Fixed 50-utterance validation baseline + WER ← NEXT — NOT RUN
+Fixed 50-utterance offline validation baseline ✅ ← CURRENT CHECKPOINT
+793 reference words / 10.84% WER (2026-10-09)
         ↓
-Training smoke test → fine-tune on train — NOT RUN
+Training smoke test ← NEXT — NOT RUN
+        ↓
+Fine-tune on train — NOT RUN
         ↓
 Validation / development loop
         ↓
@@ -73,31 +76,31 @@ NSC held-out test → GigaSpeech external/OOD benchmark
 2. [Verify speaker and utterance-ID separation](#split-construction-and-hands-on-verification) — complete for train/validation; NSC test checks pending.
 3. [Inspect and count transcript annotation tokens](#transcript-annotation-audit--complete) and [measure POC eligibility](#poc-eligibility-impact--complete) — complete; annotation policy decided.
 4. [Create deterministic speaker-aware POC subsets](#deterministic-poc-subset-generation--complete) — 300/50 generated; ownership, counts, tags, speakers, and separation independently checked.
-5. [Normalize derived transcripts](#transcript-annotation-normalization--complete) — complete: noise tags removed, whitespace cleaned, spoken words and metadata preserved; scoring policy still pending.
+5. [Normalize derived transcripts](#transcript-annotation-normalization--complete) — complete: noise tags removed, whitespace cleaned, spoken words and metadata preserved; baseline scoring policy recorded below.
 6. [Convert to Nemotron manifests](#nemotron-compatible-manifest-conversion--complete) — complete: five fields, 300/50 records, selected file paths found; one record per split inspected.
-7. [Run one validation utterance on GPU](#single-utterance-pretrained-gpu-inference--complete) — complete on October 9, 2026; next run the [fixed 50-utterance baseline and WER](#next-50-utterance-validation-baseline-and-wer--planned) under finalized scoring settings.
+7. [Run one validation utterance on GPU](#single-utterance-pretrained-gpu-inference--complete), then the [fixed 50-utterance baseline/WER](#pretrained-50-utterance-validation-baseline--complete) — both complete on October 9, 2026; offline baseline: 10.84% WER over 793 reference words.
 8. Fine-tune on train only, starting with a training smoke test on the L4.
 9. Use validation for development/model selection; record changes and compare checkpoints under the same scoring rules.
 10. Freeze the model/configuration: checkpoint, normalization, and decoding settings.
 11. Evaluate `nsc_test` for final held-out Singapore-English results — planned.
 12. Evaluate `gigaspeech_test` for external/OOD generalization and regressions after the NSC test — planned.
 
-Perform data preparation in the SSH-connected GPU host's working directory, outside Git. Download there and bind-mount host data into the container; a laptop path is not automatically available on the remote node. Record source locations/versions, scripts/seed, selected IDs, overlap results, cleanup/scoring rules, container/model versions, and run settings. Keep validation IDs fixed; when scoring rules change, rescore both models consistently. Annotation cleanup and manifest preparation are recorded below; final scoring/decoding policy and training settings remain pending.
+Perform data preparation in the SSH-connected GPU host's working directory, outside Git. Download there and bind-mount host data into the container; a laptop path is not automatically available on the remote node. Record source locations/versions, scripts/seed, selected IDs, overlap results, cleanup/scoring rules, container/model versions, and run settings. Keep validation IDs fixed; when scoring rules change, rescore both models consistently. Annotation cleanup, manifest preparation, and the baseline scoring/transcription policy are recorded below. Preserve that policy for comparisons; training settings and the final model/configuration freeze remain pending.
 
 This POC keeps the experiment small for learning. A customer deployment would choose data coverage and evaluation sizes around actual users, audio conditions, and acceptance criteria; ~300/50 utterances are not a production recommendation. WER checks recognition quality, while streaming behavior, latency, throughput, and scheduler integration remain separate future work.
 
 ## Data strategy and experiment overview
 
-The intended progression is **train → validation/development loop → freeze model/configuration/scoring → NSC held-out test → GigaSpeech external/OOD benchmark**. The **300/50 selected subsets are normalized and converted**, with selected file existence checked and one final record inspected per split. One pretrained validation transcription is verified; training and full validation WER remain pending. Test and benchmark sources are identified in the plan, with local preparation/evaluation pending. **Validation** and **dev** mean the same role; the source directory remains `nsc_dev_3h`.
+The intended progression is **train → validation/development loop → freeze model/configuration/scoring → NSC held-out test → GigaSpeech external/OOD benchmark**. The **300/50 selected subsets are normalized and converted**, with selected file existence checked and one final record inspected per split. Pretrained inference on all 50 validation recordings is verified, with **10.84% offline WER / 793 reference words**. Training and checkpoint comparisons remain pending. Test and benchmark sources are identified in the plan, with local preparation/evaluation pending. **Validation** and **dev** mean the same role; the source directory remains `nsc_dev_3h`.
 
 | Stage | Source → derived POC data | POC / evaluation size | Purpose | Model learns from it? | When used | Status |
 | --- | --- | ---: | --- | --- | --- | --- |
 | Train | `nsc_query_5h` → `poc/nemo/train_300.jsonl` | 300 selected utterances | Fine-tuning | Yes, directly through gradient updates | First learning stage | ✅ Normalized/converted; selected paths found; sample inspected; training pending |
-| Validation | `nsc_dev_3h` → `poc/nemo/dev_50.jsonl` | 50 selected utterances | Baseline comparison, tuning, checkpoint/model decisions | No gradients; influences development indirectly | Before and during fine-tuning development | ✅ Normalized/converted; one pretrained GPU transcription verified; 50-utterance baseline/WER pending |
+| Validation | `nsc_dev_3h` → `poc/nemo/dev_50.jsonl` | 50 selected utterances | Baseline comparison, tuning, checkpoint/model decisions | No gradients; influences development indirectly | Before and during fine-tuning development | ✅ Offline pretrained baseline complete: 50 recordings, 793 reference words, 10.84% WER; fine-tuned comparison pending |
 | Test | `nsc_test` | 3,684 utterances / ~7 h, upstream | Final held-out Singapore-English evaluation | No gradients or development tuning | After model/configuration is frozen | Not started; no local download or evaluation documented |
 | External benchmark | `gigaspeech_test` | 19,930 utterances / 35.4 h, upstream | Out-of-domain (OOD) generalization/regression check | No gradients or routine tuning | After NSC test evaluation | Not started; no local download or evaluation documented |
 
-Preparation complete here means **subsets checked, normalized/model-facing manifests produced, selected audio-file existence checked, and samples inspected**. A subsequent smoke test decoded and transcribed one validation recording. Training-loader consumption, model weight updates, and 50-utterance validation WER remain pending; the progression below describes the intended experiment.
+Preparation complete here means **subsets checked, normalized/model-facing manifests produced, selected audio-file existence checked, and samples inspected**. Subsequent smoke/baseline runs transcribed the fixed 50-record validation set and established the pretrained offline WER. Training-loader consumption and model weight updates remain pending; the progression below describes the intended experiment.
 
 ```text
 Train: nsc_query_5h → 300-utterance POC subset
@@ -279,7 +282,7 @@ The inspected train/validation records share the fields `id`, `speaker`, `durati
 
 ## Source manifest checks — complete
 
-The [helper-script index](../../scripts/guide-02/README.md) lists each tool's inputs and whether it writes output. These checks inspect manifest records. Full-source audio integrity remains unaudited. Later conversion checks selected-file existence, and the separate inference milestone tests one validation recording.
+The [helper-script index](../../scripts/guide-02/README.md) lists each tool's inputs and whether it writes output. These checks inspect manifest records. Full-source audio integrity remains unaudited. Later conversion checks selected-file existence, and separate inference/baseline milestones process the 50 selected validation recordings. This does not audit the full source corpus or training audio.
 
 Current original manifests on the Brev host, unchanged:
 
@@ -936,16 +939,95 @@ This verifies that the restored pretrained model could process this validation r
 
 - Multilingual Nemotron needs appropriate language conditioning; retain the actual prompt/configuration when reproducing a failure. Framework default data-loading settings may need adjustment for the tested execution path.
 - Raw predictions may include a language marker such as `<en-US>`. **Exclude language markers from WER scoring while keeping raw predictions available.** The [NVIDIA model card](https://huggingface.co/nvidia/nemotron-3.5-asr-streaming-0.6b#streaming-inference) describes language conditioning and tag handling.
-- Use identical text-normalization and decoding policies for pretrained/fine-tuned checkpoint comparisons. This output also differs from the reference in case and punctuation; finalize those scoring choices before reporting WER.
+- Use identical text-normalization and decoding policies for pretrained/fine-tuned checkpoint comparisons. This output also differs from the reference in case and punctuation; the baseline below records how those differences were normalized for scoring.
 - Read-only data mounts protect source data while troubleshooting application behavior.
 
-## Next: 50-utterance validation baseline and WER — planned
+<a id="next-50-utterance-validation-baseline-and-wer--planned"></a>
 
-Run the original pretrained checkpoint on the fixed **50-record validation set** and retain raw predictions. Before reporting WER, record case/punctuation handling, language-marker removal, decoder settings, language prompt, and streaming context. Apply the same scoring and decoding policies to pretrained and fine-tuned checkpoint comparisons.
+## Pretrained 50-utterance validation baseline — complete
 
-The successful one-file `transcribe()` run is a functional smoke test, not a cache-aware streaming benchmark or final baseline measurement. The [NVIDIA notebook](https://github.com/nvidia-riva/tutorials/blob/main/asr-finetune-nemotron-3.5-asr-streaming-prompt.ipynb) points to prompt-aware fine-tuning configuration and cache-aware streaming evaluation as the intended upstream route; the full recipe and L4 training configuration remain locally unvalidated.
+**Verified on October 9, 2026:** The operator successfully ran the original pretrained `nvidia/nemotron-3.5-asr-streaming-0.6b` model on **all 50 fixed NSC Part 6 validation recordings** using the NVIDIA L4 24 GB Brev instance and `nvcr.io/nvidia/nemo-speech:26.07.00`. These are operator-reported node results; the guide maintainer did not independently execute or recalculate this evaluation.
 
-Training smoke test, fine-tuning, checkpointing, post-training evaluation, NSC held-out test, GigaSpeech evaluation, true streaming, and latency benchmarking remain pending.
+### Executed command and reported output
+
+```bash
+docker run --rm --gpus all \
+  -v "$HOME/hf-cache:/root/.cache/huggingface" \
+  -v "$HOME/data/nsc:/data/nsc:ro" \
+  -v "$HOME/work/nemotron-poc:/work:ro" \
+  -v "$HOME/work/nemotron-poc/results/baseline:/results" \
+  nvcr.io/nvidia/nemo-speech:26.07.00 \
+  python /work/baseline_eval.py \
+  /data/nsc/poc/nemo/dev_50.jsonl \
+  --output-dir /results
+```
+
+```text
+Model class : EncDecRNNTBPEModelWithPrompt
+Model device: cuda:0
+
+Transcribing 50 recordings...
+
+=== BASELINE RESULTS ===
+Utterances     : 50
+Reference words: 793
+WER            : 10.84%
+
+=== SAVED FILES ===
+/results/baseline_predictions.jsonl
+/results/baseline_metrics.json
+```
+
+The dataset and script mounts are read-only. The added writable `/results` mount maps to `/home/ubuntu/work/nemotron-poc/results/baseline` on Brev, so the prediction/metric files survive container removal. The Hugging Face cache also remains on the host. Run the command on the SSH-connected compute node; it uses the evaluator already present there, not a laptop path.
+
+### Reported evaluation implementation and scoring policy
+
+`/home/ubuntu/work/nemotron-poc/baseline_eval.py` reads the fixed JSONL manifest, restores the original pretrained checkpoint, transcribes its recordings, applies identical normalization to reference/prediction text, and calculates dataset-level WER using NeMo's `word_error_rate()`. It saves raw and normalized predictions plus evaluation metadata.
+
+The successful transcription configuration was:
+
+```python
+transcribe_cfg = RNNTPromptTranscribeConfig(
+    use_lhotse=False,
+    batch_size=1,
+    num_workers=0,
+    target_lang="en-US",
+    verbose=False,
+)
+```
+
+The reported scoring normalization:
+
+- Lowercases text.
+- Removes language markers such as `<en-US>`.
+- Normalizes curly apostrophes.
+- Removes punctuation other than apostrophes.
+- Collapses whitespace.
+
+Apply these same rules to references and predictions, and reuse the same transcription/decoding policy for pretrained/fine-tuned comparisons. Annotation cleanup during data preparation and text normalization for scoring are separate transformations.
+
+[NeMo's WER implementation](https://github.com/NVIDIA-NeMo/Speech/blob/main/nemo/collections/asr/metrics/wer.py) aggregates word-level edit errors over total reference words; this is dataset-level WER, not an unweighted average of utterance percentages. **10.84%** is the reported displayed result over **793 reference words**; no per-utterance scores or error-category counts are provided here.
+
+**Evaluator-source TODO:** Add `scripts/guide-02/baseline_eval.py` when the exact executed host file is available for review. It was not provided or found in this workspace, so no independently reconstructed script is committed or claimed identical. Exact normalization code, output schema, and unreported decoding/context settings still need to be captured from that file/metadata before making a fine-tuned comparison.
+
+### Interpretation and portfolio lessons
+
+The operator observed that the model sometimes changes spoken nonstandard grammatical constructions into more standard English. A result can read more naturally while introducing WER substitutions against the spoken reference. This is a qualitative observation; no example records or quantified error breakdown are added. Preserve the intended Singapore-English references rather than silently rewriting them to match the model.
+
+- **Fixed validation set:** The same recordings make changes attributable to the model/configuration rather than a different sample.
+- **Consistent normalization:** Score both checkpoints under identical rules; if rules change, rescore both.
+- **Original pretrained baseline:** Establishes the starting point before gradient updates, so later fine-tuning gains or regressions have a comparison.
+- **Raw predictions:** Preserve capitalization, punctuation, language markers, and model wording for error inspection; retain normalized versions for scoring.
+
+This is a **small development-set result from offline transcription**, not a production-quality benchmark, final held-out result, or streaming WER. No latency, throughput, runtime, memory-consumption, training, or checkpoint-comparison result is claimed.
+
+Keep original NSC audio, source dataset contents, and transcript-bearing raw/normalized prediction files outside Git. This guide and progress log retain aggregate metrics and the reproduction command; the reported output files remain in the host results directory.
+
+## Next: training smoke test — planned
+
+Exercise the prompt-aware training route with the prepared 300-record training manifest while keeping the 50-record validation set fixed. Record the actual training/configuration choices and establish a successful small training run before longer fine-tuning. No training command or result is documented as executed yet.
+
+The [NVIDIA notebook](https://github.com/nvidia-riva/tutorials/blob/main/asr-finetune-nemotron-3.5-asr-streaming-prompt.ipynb) remains the intended upstream route for prompt-aware fine-tuning and cache-aware streaming evaluation. The full recipe and L4 training configuration remain locally unvalidated. Checkpoint comparison, post-training evaluation, NSC held-out test, GigaSpeech evaluation, true streaming, and latency benchmarking remain pending.
 
 Fixed seed **42** and deterministic sampling remain part of the POC design. Artifact hashing or byte-for-byte regeneration remains optional production rigor, not a tutorial blocker.
 
@@ -977,12 +1059,13 @@ Fixed seed **42** and deterministic sampling remain part of the POC design. Arti
 | Derived speaker/utterance-ID validation | Complete: 111 / 50 speakers; 0 shared speakers and 0 shared IDs |
 | Independent derived-subset validation | Complete for the ownership, count, tag, speaker, and separation checks above |
 | Transcript normalization output | Complete: 300/50 records; 61/4 texts changed; approved noise tags removed; independent rerun failed on missing helper |
-| Annotation-policy application | Complete for selected data: whole `<unk>` utterances excluded; noise-token cleanup applied; final scoring policy pending |
+| Annotation-policy application | Complete for selected data: whole `<unk>` utterances excluded; noise-token cleanup applied; baseline scoring policy recorded |
 | Nemotron manifest conversion | Complete: five fields, `en-US`; 300/50 records and selected file existence reported |
 | Output-manifest sample inspection | Complete: first record from each NeMo manifest inspected |
 | New normalized/NeMo output ownership | Not reported; earlier ownership correction covered only original POC subset files |
 | Single-utterance pretrained NSC GPU inference | Complete and verified on October 9, 2026: `cuda:0`; reference `uh correct` → raw prediction `Uh correct. <en-US>` |
-| Fixed 50-utterance baseline / validation WER | Not yet complete |
+| Fixed 50-utterance baseline / validation WER | Complete on October 9, 2026: 50 recordings, 793 reference words, 10.84% offline WER |
+| Exact baseline evaluator source in Git | Pending: executed host file needed; no reconstructed equivalent committed |
 | Training smoke test | Not yet complete |
 | Fine-tuning | Not yet complete |
 | Checkpointing | Not yet complete |
@@ -999,11 +1082,11 @@ Fixed seed **42** and deterministic sampling remain part of the POC design. Arti
 
 ### End-of-day checkpoint
 
-**Current checkpoint (October 9, 2026):** Single-utterance pretrained Nemotron GPU inference is verified on the Brev L4. NeMo restoration logs and `cuda:0` were reported; reference `uh correct` produced raw prediction `Uh correct. <en-US>` using the explicit prompt-aware, non-Lhotse configuration. Prepared 300/50 manifests remain in place. Full validation baseline/WER and training remain unexecuted.
+**Current checkpoint (October 9, 2026):** Pretrained single-utterance GPU inference and offline evaluation of all 50 fixed validation recordings are complete. The L4 run reported `EncDecRNNTBPEModelWithPrompt` on `cuda:0`, **793 reference words and 10.84% WER**, with prediction/metric files saved under the host `results/baseline` directory. Baseline normalization/configuration is recorded above; exact evaluator source is still awaited. Training and checkpoint comparison remain unexecuted.
 
-**Next session:** Finalize the scoring/decoding policy, then run the fixed 50-utterance pretrained validation baseline and WER. Exclude language markers from scoring, keep raw predictions, and use the same policies for later fine-tuned comparisons.
+**Next session:** Prepare and run the training smoke test using the 300-record train manifest. Keep validation fixed, retain the pretrained baseline, and capture the exact evaluator/configuration for consistent later comparisons.
 
-Later: fixed validation baseline/WER under recorded scoring settings → training smoke test → fine-tune on train → validation/development loop → freeze checkpoint/configuration/scoring → `nsc_test` → `gigaspeech_test`. Both evaluations remain unstarted. The infrastructure progression remains Docker validation → actual Nemotron inference → streaming inference → package the workload → SLURM; streaming and scheduler work remain future milestones.
+Later: training smoke test → fine-tune on train → validation/development loop → freeze checkpoint/configuration/scoring → `nsc_test` → `gigaspeech_test`. Both evaluations remain unstarted. The infrastructure progression remains Docker validation → actual Nemotron inference → streaming inference → package the workload → SLURM; streaming and scheduler work remain future milestones.
 
 ## Troubleshooting notes
 
@@ -1057,7 +1140,7 @@ The operator considered Curator after reviewing the [NVIDIA article](https://dev
 
 ## Appendix: optional single-file inference smoke test — not yet executed
 
-These previously prepared commands remain an optional generic English one-file alternative, not evidence of completed inference. The [NSC validation smoke test](#single-utterance-pretrained-gpu-inference--complete) above is now verified; the [50-utterance baseline/WER](#next-50-utterance-validation-baseline-and-wer--planned) is next. This older generic example does not include the explicit non-Lhotse workaround and may encounter the reported prompt error in the pinned container; follow the successful configuration above when adapting it. Run these commands in the GPU host's shell over SSH; no notebook, GUI, or microphone is required. This is whole-file inference with a streaming-capable model; true streaming is a later milestone.
+These previously prepared commands remain an optional generic English one-file alternative, not evidence of completed inference. The [NSC validation smoke test](#single-utterance-pretrained-gpu-inference--complete) above is now verified; the [50-utterance offline baseline/WER](#pretrained-50-utterance-validation-baseline--complete) is also complete. This older generic example does not include the explicit non-Lhotse workaround and may encounter the reported prompt error in the pinned container; follow the successful configuration above when adapting it. Run these commands in the GPU host's shell over SSH; no notebook, GUI, or microphone is required. This is whole-file inference with a streaming-capable model; true streaming is a later milestone.
 
 ### 1. Create an audio directory and download a small sample
 
