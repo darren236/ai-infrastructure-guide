@@ -8,7 +8,7 @@ Build a small proof of concept (POC) and tutorial for fine-tuning `nvidia/nemotr
 
 ## Where this guide fits in the agenda
 
-[Guide 01](01-brev-gpu-node-validation.md#agenda-validate-the-stack-from-gpu-to-application) covers host, container, and framework access. This guide continues at **layer 8: application** with the Nemotron ASR POC. NeMo import and model placement extend the reported layer 7 checks. Pretrained GPU inference and an offline baseline on all 50 NSC validation recordings are verified; training and held-out evaluation remain pending.
+[Guide 01](01-brev-gpu-node-validation.md#agenda-validate-the-stack-from-gpu-to-application) covers host, container, and framework access. This guide continues at **layer 8: application** with the Nemotron ASR POC. NeMo import and model placement extend the reported layer 7 checks. Pretrained GPU inference, an offline baseline on all 50 NSC validation recordings, and an official two-step GPU training smoke test with saved artifacts are verified. Checkpoint restoration/comparison, longer fine-tuning, and held-out evaluation remain pending.
 
 ### Guide sections
 
@@ -18,16 +18,17 @@ Build a small proof of concept (POC) and tutorial for fine-tuning `nvidia/nemotr
 | Node setup | [Preflight](#node-preflight--complete) · [NeMo and model loading](#nemo-container-and-model-on-gpu--complete) |
 | Source data | [NSC download](#nsc-trainingquery-and-development-data--downloaded-and-extracted) · [Manifest checks and annotation policy](#source-manifest-checks--complete) |
 | Derived POC data | [Subset generation](#deterministic-poc-subset-generation--complete) · [Independent validation](#derived-poc-subset-validation--complete) · [Normalization](#transcript-annotation-normalization--complete) · [Nemotron conversion](#nemotron-compatible-manifest-conversion--complete) |
-| Inference and next work | [Successful pretrained GPU smoke test](#single-utterance-pretrained-gpu-inference--complete) · [Completed 50-utterance baseline/WER](#pretrained-50-utterance-validation-baseline--complete) · [Next training smoke test](#next-training-smoke-test--planned) · [Completion boundaries and checkpoint](#completion-boundaries-and-next-step) |
+| Inference | [Successful pretrained GPU smoke test](#single-utterance-pretrained-gpu-inference--complete) · [Completed 50-utterance baseline/WER](#pretrained-50-utterance-validation-baseline--complete) |
+| Training and next work | [Official two-step training](#official-nemo-fine-tuning--two-step-gpu-smoke-test) · [Training failures/fixes](#troubleshooting-history-failures-and-fixes-in-order) · [Next checkpoint evaluation](#next-restore-and-evaluate-the-exported-checkpoint--planned) · [Completion boundaries](#completion-boundaries-and-next-step) |
 | References | [Helper scripts](../../scripts/guide-02/README.md) · [Troubleshooting](#troubleshooting-notes) · [Optional one-WAV test](#appendix-optional-single-file-inference-smoke-test--not-yet-executed) |
 
 ## Guide 02 workflow agenda
 
-[Node preflight](#node-preflight--complete), [NeMo/model loading](#nemo-container-and-model-on-gpu--complete), source inspection/separation, annotation auditing, subset generation/validation, [normalization](#transcript-annotation-normalization--complete), and [Nemotron manifest conversion](#nemotron-compatible-manifest-conversion--complete) are complete for the operator-reported checks. Conversion found all 300/50 selected audio files, and one final record per split was inspected. On **October 9, 2026**, the original pretrained model successfully transcribed one recording and then all **50 fixed validation recordings** on the L4. The offline baseline reported **793 reference words and 10.84% WER**. Training-loader checks, NSC test checks, and steps 8–12 remain pending.
+[Node preflight](#node-preflight--complete), [NeMo/model loading](#nemo-container-and-model-on-gpu--complete), source inspection/separation, annotation auditing, subset generation/validation, [normalization](#transcript-annotation-normalization--complete), and [Nemotron manifest conversion](#nemotron-compatible-manifest-conversion--complete) are complete for the operator-reported checks. Conversion found all 300/50 selected audio files, and one final record per split was inspected. On **October 9, 2026**, the original pretrained model successfully transcribed one recording and then all **50 fixed validation recordings** on the L4. The offline baseline reported **793 reference words and 10.84% WER**. The official two-step training smoke test and checkpoint saving also completed that day. Next: restore/evaluate the saved model; longer training and steps 9–12 remain pending.
 
 ### Current pipeline status
 
-Checkmarks refer to the reported checks: GPU/framework access, model placement, data preparation, pretrained single-record inference, and the fixed 50-record offline validation baseline. Training, checkpoint comparison, held-out evaluation, and true streaming performance testing remain pending.
+Checkmarks refer to operator-reported checks, including the two-step official training run and saved artifacts. They do not establish full training capacity, checkpoint integrity through reload, or model-quality improvement. Checkpoint comparison, longer fine-tuning, held-out evaluation, and streaming performance remain pending.
 
 ```text
 GPU / container infrastructure ✅
@@ -56,18 +57,26 @@ Manifest sample inspection ✅
         ↓
 Single-utterance pretrained GPU inference ✅
         ↓
-Fixed 50-utterance offline validation baseline ✅ ← CURRENT CHECKPOINT
+Fixed 50-utterance offline validation baseline ✅
 793 reference words / 10.84% WER (2026-10-09)
         ↓
-Training smoke test ← NEXT — NOT RUN
+Official two-step GPU training ✅
         ↓
-Fine-tune on train — NOT RUN
+Checkpoint artifacts saved ✅ ← CURRENT CHECKPOINT (2026-10-09)
         ↓
-Validation / development loop
+Restore exported checkpoint ← NEXT — PENDING
         ↓
-Freeze checkpoint, configuration, and scoring policy
+Fixed 50-record fine-tuned WER — PENDING
         ↓
-NSC held-out test → GigaSpeech external/OOD benchmark
+Longer fine-tuning / validation development loop — PENDING
+        ↓
+Freeze checkpoint, configuration, and scoring policy — PENDING
+        ↓
+NSC held-out test — PENDING
+        ↓
+GigaSpeech external/OOD benchmark — PENDING
+        ↓
+Streaming latency / performance — PENDING
 ```
 
 ### Hands-on agenda
@@ -79,28 +88,28 @@ NSC held-out test → GigaSpeech external/OOD benchmark
 5. [Normalize derived transcripts](#transcript-annotation-normalization--complete) — complete: noise tags removed, whitespace cleaned, spoken words and metadata preserved; baseline scoring policy recorded below.
 6. [Convert to Nemotron manifests](#nemotron-compatible-manifest-conversion--complete) — complete: five fields, 300/50 records, selected file paths found; one record per split inspected.
 7. [Run one validation utterance on GPU](#single-utterance-pretrained-gpu-inference--complete), then the [fixed 50-utterance baseline/WER](#pretrained-50-utterance-validation-baseline--complete) — both complete on October 9, 2026; offline baseline: 10.84% WER over 793 reference words.
-8. Fine-tune on train only, starting with a training smoke test on the L4.
-9. Use validation for development/model selection; record changes and compare checkpoints under the same scoring rules.
+8. [Exercise official training on the L4](#official-nemo-fine-tuning--two-step-gpu-smoke-test) — two-step smoke test and checkpoint saving complete; longer fine-tuning pending.
+9. [Restore/evaluate the saved export on fixed validation](#next-restore-and-evaluate-the-exported-checkpoint--planned) — next; compare under identical policies before longer training and development/model selection.
 10. Freeze the model/configuration: checkpoint, normalization, and decoding settings.
 11. Evaluate `nsc_test` for final held-out Singapore-English results — planned.
 12. Evaluate `gigaspeech_test` for external/OOD generalization and regressions after the NSC test — planned.
 
-Perform data preparation in the SSH-connected GPU host's working directory, outside Git. Download there and bind-mount host data into the container; a laptop path is not automatically available on the remote node. Record source locations/versions, scripts/seed, selected IDs, overlap results, cleanup/scoring rules, container/model versions, and run settings. Keep validation IDs fixed; when scoring rules change, rescore both models consistently. Annotation cleanup, manifest preparation, and the baseline scoring/transcription policy are recorded below. Preserve that policy for comparisons; training settings and the final model/configuration freeze remain pending.
+Perform data preparation in the SSH-connected GPU host's working directory, outside Git. Download there and bind-mount host data into the container; a laptop path is not automatically available on the remote node. Record source locations/versions, scripts/seed, selected IDs, overlap results, cleanup/scoring rules, container/model versions, and run settings. Keep validation IDs fixed; when scoring rules change, rescore both models consistently. Annotation cleanup, manifest preparation, and the baseline scoring/transcription policy are recorded below. Preserve that policy for comparisons; two-step training settings are recorded below, while longer-run choices and the final model/configuration freeze remain pending.
 
 This POC keeps the experiment small for learning. A customer deployment would choose data coverage and evaluation sizes around actual users, audio conditions, and acceptance criteria; ~300/50 utterances are not a production recommendation. WER checks recognition quality, while streaming behavior, latency, throughput, and scheduler integration remain separate future work.
 
 ## Data strategy and experiment overview
 
-The intended progression is **train → validation/development loop → freeze model/configuration/scoring → NSC held-out test → GigaSpeech external/OOD benchmark**. The **300/50 selected subsets are normalized and converted**, with selected file existence checked and one final record inspected per split. Pretrained inference on all 50 validation recordings is verified, with **10.84% offline WER / 793 reference words**. Training and checkpoint comparisons remain pending. Test and benchmark sources are identified in the plan, with local preparation/evaluation pending. **Validation** and **dev** mean the same role; the source directory remains `nsc_dev_3h`.
+The intended progression is **train → validation/development loop → freeze model/configuration/scoring → NSC held-out test → GigaSpeech external/OOD benchmark**. The **300/50 selected subsets are normalized and converted**, with selected file existence checked and one final record inspected per split. Pretrained inference on all 50 validation recordings is verified, with **10.84% offline WER / 793 reference words**. Two optimizer steps and checkpoint saving are verified; longer training and checkpoint comparisons remain pending. Test and benchmark sources are identified in the plan, with local preparation/evaluation pending. **Validation** and **dev** mean the same role; the source directory remains `nsc_dev_3h`.
 
 | Stage | Source → derived POC data | POC / evaluation size | Purpose | Model learns from it? | When used | Status |
 | --- | --- | ---: | --- | --- | --- | --- |
-| Train | `nsc_query_5h` → `poc/nemo/train_300.jsonl` | 300 selected utterances | Fine-tuning | Yes, directly through gradient updates | First learning stage | ✅ Normalized/converted; selected paths found; sample inspected; training pending |
+| Train | `nsc_query_5h` → `poc/nemo/train_300.jsonl` | 300 selected utterances | Fine-tuning | Yes, directly through gradient updates | First learning stage | ✅ Prepared; official two-step training complete; all 300 duration-eligible, not all confirmed consumed; longer training pending |
 | Validation | `nsc_dev_3h` → `poc/nemo/dev_50.jsonl` | 50 selected utterances | Baseline comparison, tuning, checkpoint/model decisions | No gradients; influences development indirectly | Before and during fine-tuning development | ✅ Offline pretrained baseline complete: 50 recordings, 793 reference words, 10.84% WER; fine-tuned comparison pending |
 | Test | `nsc_test` | 3,684 utterances / ~7 h, upstream | Final held-out Singapore-English evaluation | No gradients or development tuning | After model/configuration is frozen | Not started; no local download or evaluation documented |
 | External benchmark | `gigaspeech_test` | 19,930 utterances / 35.4 h, upstream | Out-of-domain (OOD) generalization/regression check | No gradients or routine tuning | After NSC test evaluation | Not started; no local download or evaluation documented |
 
-Preparation complete here means **subsets checked, normalized/model-facing manifests produced, selected audio-file existence checked, and samples inspected**. Subsequent smoke/baseline runs transcribed the fixed 50-record validation set and established the pretrained offline WER. Training-loader consumption and model weight updates remain pending; the progression below describes the intended experiment.
+Preparation complete here means **subsets checked, normalized/model-facing manifests produced, selected audio-file existence checked, and samples inspected**. Subsequent smoke/baseline runs transcribed the fixed 50-record validation set and established the pretrained offline WER. The official training loader and optimizer path have now run for two steps; consumption of all 300 recordings and longer training remain unverified. The progression below describes the full intended experiment.
 
 ```text
 Train: nsc_query_5h → 300-utterance POC subset
@@ -130,7 +139,7 @@ The [upstream dataset documentation](https://huggingface.co/datasets/pengyizhou/
 
 | Source | Origin | Full source size | Contents and intended use |
 | --- | --- | --- | --- |
-| `nsc_query_5h` | NSC IMDA Part 6 train partition | 2,289 utterances locally; 5.01 h from manifest durations; ~214 MB, recorded as `214M` | FLAC audio and JSONL manifest; 300 training utterances generated for future fine-tuning |
+| `nsc_query_5h` | NSC IMDA Part 6 train partition | 2,289 utterances locally; 5.01 h from manifest durations; ~214 MB, recorded as `214M` | FLAC audio and JSONL manifest; 300 selected training utterances used by the two-step route |
 | `nsc_dev_3h` | NSC IMDA Part 6 train partition | 1,316 utterances locally; 3.02 h from manifest durations | FLAC audio and JSONL manifest; 50 validation utterances generated for future development/checkpoint decisions |
 | `nsc_test` | Official NSC IMDA Part 6 test partition | 3,684 utterances / ~7 h, upstream | FLAC audio and JSONL manifest, per upstream; planned held-out in-domain evaluation |
 | `gigaspeech_test` | Separate GigaSpeech test corpus | 19,930 utterances / 35.4 h, upstream | WAV PCM_16 audio and JSONL manifest with normalized references, per upstream; planned external/OOD evaluation |
@@ -750,7 +759,7 @@ Before finalizing the converter, the operator reviewed [NVIDIA's fine-tuning art
 | `lang` | Language metadata included to follow the example recipe |
 | `target_lang` | Target-language metadata for the prompt-aware recipe |
 
-Both language fields are `en-US`, following the notebook. The [model card](https://huggingface.co/nvidia/nemotron-3.5-asr-streaming-0.6b#supported-languages) lists `en-US` and `en-GB` as supported English locales. This choice does not relabel Singapore recordings as American speech or establish an optimal prompt; we do not invent `en-SG`. These are metadata fields, not a manually appended `<en-US>` transcript token. The smoke script below reads `target_lang` from the first record into an explicit transcription configuration. Training-loader consumption of the full five-field format remains untested.
+Both language fields are `en-US`, following the notebook. The [model card](https://huggingface.co/nvidia/nemotron-3.5-asr-streaming-0.6b#supported-languages) lists `en-US` and `en-GB` as supported English locales. This choice does not relabel Singapore recordings as American speech or establish an optimal prompt; we do not invent `en-SG`. These are metadata fields, not a manually appended `<en-US>` transcript token. The smoke script below reads `target_lang` from the first record into an explicit transcription configuration. The five-field format was subsequently exercised by the official two-step training route below; this does not establish consumption of every training recording.
 
 ### Audio paths and provenance
 
@@ -1019,17 +1028,285 @@ The operator observed that the model sometimes changes spoken nonstandard gramma
 - **Original pretrained baseline:** Establishes the starting point before gradient updates, so later fine-tuning gains or regressions have a comparison.
 - **Raw predictions:** Preserve capitalization, punctuation, language markers, and model wording for error inspection; retain normalized versions for scoring.
 
-This is a **small development-set result from offline transcription**, not a production-quality benchmark, final held-out result, or streaming WER. No latency, throughput, runtime, memory-consumption, training, or checkpoint-comparison result is claimed.
+This is a **small development-set result from offline transcription**, not a production-quality benchmark, final held-out result, or streaming WER. This baseline alone does not establish training or checkpoint-comparison results; no latency, throughput, runtime, or memory-consumption measurement is claimed.
 
 Keep original NSC audio, source dataset contents, and transcript-bearing raw/normalized prediction files outside Git. This guide and progress log retain aggregate metrics and the reproduction command; the reported output files remain in the host results directory.
 
-## Next: training smoke test — planned
+<a id="next-training-smoke-test--planned"></a>
 
-Exercise the prompt-aware training route with the prepared 300-record training manifest while keeping the 50-record validation set fixed. Record the actual training/configuration choices and establish a successful small training run before longer fine-tuning. No training command or result is documented as executed yet.
+## Official NeMo Fine-Tuning — Two-Step GPU Smoke Test
 
-The [NVIDIA notebook](https://github.com/nvidia-riva/tutorials/blob/main/asr-finetune-nemotron-3.5-asr-streaming-prompt.ipynb) remains the intended upstream route for prompt-aware fine-tuning and cache-aware streaming evaluation. The full recipe and L4 training configuration remain locally unvalidated. Checkpoint comparison, post-training evaluation, NSC held-out test, GigaSpeech evaluation, true streaming, and latency benchmarking remain pending.
+**Verified execution: October 9, 2026; documentation synced October 10.** The operator completed two optimizer steps on the Brev Ubuntu node's **NVIDIA L4 24 GB**, using `nvcr.io/nvidia/nemo-speech:26.07.00` (NeMo Speech 3.0.0). The original pretrained `nvidia/nemotron-3.5-asr-streaming-0.6b` was restored as `EncDecRNNTBPEModelWithPrompt`. Training, limited validation, and checkpoint/model export succeeded. Evidence is the supplied operator command/log history and host artifact listing; the guide maintainer did not independently run GPU training.
 
-Fixed seed **42** and deterministic sampling remain part of the POC design. Artifact hashing or byte-for-byte regeneration remains optional production rigor, not a tutorial blocker.
+The objective was **training functionality**, not accuracy optimization or proof of full training capacity. Longer fine-tuning, checkpoint restoration, and a comparable post-training WER remain pending.
+
+### Official source and experiment architecture
+
+Use [NeMo Speech **v3.0.0**](https://github.com/NVIDIA-NeMo/Speech/tree/v3.0.0), its [`speech_to_text_finetune.py` entry point](https://github.com/NVIDIA-NeMo/Speech/blob/v3.0.0/examples/asr/speech_to_text_finetune.py), and the [prompt-aware streaming YAML](https://github.com/NVIDIA-NeMo/Speech/blob/v3.0.0/examples/asr/conf/fastconformer/cache_aware_streaming/fastconformer_transducer_bpe_streaming_prompt.yaml). The [NVIDIA fine-tuning notebook](https://github.com/nvidia-riva/tutorials/blob/main/asr-finetune-nemotron-3.5-asr-streaming-prompt.ipynb) provides recipe context. Its example uses a moving branch and different training settings; this experiment pins the Speech source tag and uses the overrides below.
+
+`/home/ubuntu/work/nemotron-poc/train_smoke.py` was an earlier custom-loop proposal, **superseded before execution**. It is not the recommended entry point. Both the observed two-step test and planned longer run use NVIDIA's official model restoration, data-loading strategy, optimizer, precision, and checkpointing implementation. The source and original YAML remain unchanged; experiment-specific choices belong in our launcher.
+
+```text
+Brev host
+├── NVIDIA driver / L4
+├── ~/work/nemo-speech-src      → /nemo-src (read-only, v3.0.0 recipes)
+├── ~/data/nsc                 → /data/nsc (read-only data)
+├── ~/hf-cache                 → /root/.cache/huggingface (read-only checkpoint)
+└── ~/work/nemotron-poc/results/official_finetune/<run-id>
+                               → /results (writable, persistent)
+
+NeMo Speech container
+pretrained .nemo → official fine-tuning entry point + Hydra overrides
+                → Lhotse train / validation loaders → GPU optimizer steps
+                → checkpoints + .nemo export + logs on host storage
+```
+
+Train remains the **300-utterance / 111-speaker / ~0.66 h** seed-42 subset; validation remains **50 utterances / 50 speakers / ~0.11 h**, with no shared speakers or utterance IDs. Host manifests are `/home/ubuntu/data/nsc/poc/nemo/train_300.jsonl` and `dev_50.jsonl`; inside the container they are `/data/nsc/poc/nemo/train_300.jsonl` and `dev_50.jsonl`. Both retain the five fields documented above, with `lang` and `target_lang` set to `en-US`. Original datasets remain unchanged.
+
+### Duration audit: eligibility is not consumption
+
+The operator inspected durations in the actual 300-record training manifest:
+
+| Check | Observed value |
+| --- | ---: |
+| Recordings | 300 |
+| Shortest | 1.43 s |
+| Median | 6.23 s |
+| P95 | 20.25 s |
+| Longest | 29.72 s |
+| Eligible under the earlier proposed `max_duration=12.0` | 240; 60 excluded (20%) |
+| Eligible under the final `max_duration=39.99` | All 300 by manifest duration |
+
+The final cutoff matches the upstream maximum-duration default. Reducing duration would change the workload distribution and could hide memory problems involving longer audio. Here we reduce **optimizer steps**, retaining the intended training route and duration eligibility. **All 300 eligible does not mean all 300 were consumed:** the run stopped after two optimizer steps. No audit of every recording's training consumption or full-run memory demand is claimed.
+
+### Training settings and rationale
+
+The [repository launcher](../../scripts/guide-02/run_nsc_train.sh) preserves the supplied command history and both successful Hydra corrections. It is **reconstructed**, not compared byte-for-byte with `/home/ubuntu/work/nemotron-poc/run_nsc_train.sh` or independently tested on an L4. The exact `baseline_eval.py` remains unavailable as recorded above; adding this launcher does not synchronize that evaluator.
+
+| Setting | Recorded choice | Why / boundary |
+| --- | --- | --- |
+| Entry / initial model | Official `speech_to_text_finetune.py`; cached pretrained `.nemo` | Exercise the intended longer-run implementation, restoring pretrained weights |
+| GPU / precision | One L4; `bf16-mixed` | BF16 mixed precision is appropriate on supported L4 hardware; no measured memory/performance gain claimed |
+| Optimizer / learning rate | AdamW; `1e-5` | Conservative initial fine-tuning choice, not an optimized learning rate |
+| Scheduler | `'~model.optim.sched'` | Delete the key for constant learning rate; do not leave `sched=null` |
+| Training batch size | `+model.train_ds.batch_size=1` | Conservative starting point for L4 memory |
+| Gradient accumulation | Inherited NVIDIA configuration; no new override | Effective composed run value has not been independently verified; do not infer an effective batch size |
+| Training / validation loaders | Upstream Lhotse enabled; `default_prompt_mode=langID` for both | Prompt-aware training using the recorded `en-US` metadata |
+| Audio loading | `is_tarred=false` | Prepared audio consists of individual FLAC recordings |
+| Batching | `batch_duration=null`; `quadratic_duration=null` | Replace duration-based batching with the recorded batch-size-one setup |
+| Duration / workers | `max_duration=39.99`; `num_workers=0` for train/validation | Retain all selected duration values; keep data-loading concurrency simple |
+| Smoke budget / validation | `max_steps=2`; `val_check_interval=2`; `limit_val_batches=2` | Two optimizer steps and only two validation batches; not evaluation of all 50 |
+| Checkpointing | Experiment-manager callback; `save_top_k=1` and model export | Exercise saving to persistent host storage; restoration is a separate check |
+
+The pinned YAML includes duration-based batching and a Noam warmup of **10,000 steps**, intended for a larger training budget. Those defaults are not assumed ideal for one L4 and 300 records. Constant `1e-5` is a deliberate initial experiment choice; choose any future schedule from the actual training budget and validation evidence. Training uses Lhotse; the successful **offline inference** workaround used `use_lhotse=False`. These are separate execution paths, not contradictory settings.
+
+### Launcher, mounts, and modes
+
+Follow the [launcher prerequisites and usage](../../scripts/guide-02/README.md#official-training-launcher). The host paths must exist on the SSH-connected node; committing the script to GitHub does not deploy it there.
+
+| Command part | Purpose |
+| --- | --- |
+| `--rm --gpus all` | Remove the stopped container while exposing the GPU |
+| `"$SOURCE:/nemo-src:ro"` | Make the pinned official recipes visible without modifying upstream source |
+| `"$DATA:/data/nsc:ro"` | Protect original and derived datasets from container writes |
+| `"$CACHE:/root/.cache/huggingface:ro"` | Restore the already-downloaded pretrained checkpoint without changing cache contents |
+| `"$OUTPUT:/results"` | Persist experiment output after the container exits |
+| `--config-path` / `--config-name` | Select the official YAML; Hydra overrides supply POC settings |
+| `+init_from_nemo_model` | Restore the specific cached pretrained export |
+| `exp_manager` overrides | Name the experiment/version and save checkpoints beneath `/results` |
+| `2>&1 \| tee "$OUTPUT/console.log"` | Capture console output on the host; `pipefail` retains Docker failure status |
+
+The checkpoint path is pinned to observed Hugging Face snapshot `ea30d66debe3740a08b573244286791d423d6b3e`. It supports reproducing this run **only when that file exists in the mounted cache**; a new node may need a different checkpoint path. No portable replacement or image digest is invented.
+
+`smoke` uses two steps, validation every two training batches, at most two validation batches, and logging each step. `full <steps>` uses the same core training route with a chosen step budget, `val_check_interval=1.0`, `limit_val_batches=1.0`, and logging every ten steps. The primary intended difference is duration, with validation/logging limits also explicitly changed; fractional `1.0` is different from integer `2`. `full 600` is an **unexecuted example**, not a result. Run IDs use UTC timestamps to the second, and outputs stay outside Git.
+
+### Troubleshooting history: failures and fixes in order
+
+#### A. Installed framework without example recipes
+
+Searches under `/opt` and `/workspace` did not locate the expected fine-tuning examples. A broader search found the installed NeMo package at `/workspace/nemo`. Package availability and example-recipe availability are separate checks.
+
+The operator cloned the pinned source on the host:
+
+```bash
+git clone --depth 1 --branch v3.0.0 \
+  https://github.com/NVIDIA-NeMo/Speech.git \
+  ~/work/nemo-speech-src
+```
+
+The checkout was confirmed at `/home/ubuntu/work/nemo-speech-src` and mounted read-only. Keep the container framework, upstream recipes, experiment launcher, data, and outputs in separate locations.
+
+#### B. Training script initially absent from the container path
+
+Observed error:
+
+```text
+python: can't open file
+'/nemo-src/examples/asr/speech_to_text_finetune.py':
+[Errno 2] No such file or directory
+```
+
+Host-path and bind-mount investigation eventually produced this successful diagnostic:
+
+```bash
+docker run --rm \
+  -v "$HOME/work/nemo-speech-src:/nemo-src:ro" \
+  nvcr.io/nvidia/nemo-speech:26.07.00 \
+  bash -lc '
+    test -f /nemo-src/examples/asr/speech_to_text_finetune.py \
+    && echo "SUCCESS: Training script accessible via -v mount"
+  '
+```
+
+Observed output: `SUCCESS: Training script accessible via -v mount`. A diagnostic using `--mount` also found the script. The exact earlier cause was **not conclusively established**; both mount forms subsequently worked. A successful clone does not prove container visibility: check host and container paths separately.
+
+#### C. Root-owned host results directory
+
+Observed error and ownership:
+
+```text
+mkdir: cannot create directory
+'/home/ubuntu/work/nemotron-poc/results/official_finetune':
+Permission denied
+
+drwxr-xr-x ... root root ... results
+```
+
+The operator inspected and corrected only the parent results directory:
+
+```bash
+ls -ld ~/work/nemotron-poc/results
+sudo chown ubuntu:ubuntu ~/work/nemotron-poc/results
+```
+
+This was deliberately **non-recursive**. It does not establish ownership of every new output file or the normalized/NeMo manifests. Containers running as UID 0 can create root-owned bind-mount outputs. A customer deployment needs an intentional UID/GID and persistent-storage ownership policy.
+
+#### D. Hydra override of a missing key
+
+Observed composition error:
+
+```text
+hydra.errors.ConfigCompositionException:
+Could not override 'trainer.limit_val_batches'.
+
+To append to your config use:
++trainer.limit_val_batches=2
+```
+
+The YAML did not define that key. The initial `trainer.limit_val_batches="$VAL_BATCHES"` attempted to override it; the successful launcher uses **`+trainer.limit_val_batches="$VAL_BATCHES"`**.
+
+| Hydra expression | Meaning |
+| --- | --- |
+| `key=value` | Override an existing key |
+| `+key=value` | Add a missing key |
+| `++key=value` | Add or override a key |
+| `~key` | Delete a key |
+
+These [Hydra override semantics](https://hydra.cc/docs/advanced/override_grammar/basic/) are part of the runtime contract: valid Bash syntax does not establish successful configuration composition.
+
+#### E. Null scheduler retained a key NeMo tried to modify
+
+Observed container traceback:
+
+```text
+File "/workspace/nemo/core/classes/modelPT.py",
+line 691, in setup_optimization
+
+optim_config['sched']['max_steps'] = self._trainer.max_steps
+
+TypeError: 'NoneType' object does not support item assignment
+```
+
+`model.optim.sched=null` retained the scheduler key with a `None` value. NeMo checked key presence and then attempted to modify that value. **`'~model.optim.sched'`** deletes the key and allowed the run to proceed with the deliberately chosen constant learning rate.
+
+The [pinned ModelPT source](https://github.com/NVIDIA-NeMo/Speech/blob/v3.0.0/nemo/core/classes/modelPT.py) contains the same key-presence/write behavior, at a different line number from the container traceback. This supports the explanation, not byte identity between the container package and host source tag. No NVIDIA framework code was patched. Future scheduling belongs in experiment configuration and should fit the longer-run budget.
+
+### Observed execution and logs
+
+The operator executed:
+
+```bash
+bash ~/work/nemotron-poc/run_nsc_train.sh smoke
+```
+
+Run ID: **`smoke-2-20261009T092152Z`**. Reported excerpts:
+
+```text
+Validation DataLoader 0:
+50% | 1/2
+
+Epoch 0, global step 2:
+'val_wer' reached 1.66667 (best 1.66667)
+
+Saving model to:
+'/results/nemotron_nsc/smoke-2-20261009T092152Z/checkpoints/nemotron_nsc--val_wer=1.6667-epoch=0.ckpt'
+
+New .nemo model saved to:
+/results/nemotron_nsc/smoke-2-20261009T092152Z/checkpoints/nemotron_nsc.nemo
+
+Trainer.fit stopped: max_steps=2 reached.
+```
+
+The final message establishes completion of the two-step limit. Logs also showed repeated checkpoint/export activity during finalization. Training-step timing, restoration, validation, serialization, and total wall-clock time are different measurements. No peak VRAM, GPU utilization, throughput, convergence, end-to-end runtime, or cost benchmark was captured.
+
+### Checkpoint artifacts: saved, not yet restored
+
+The operator checked persistent host files with:
+
+```bash
+find ~/work/nemotron-poc/results/official_finetune \
+  -type f \( -name "*.nemo" -o -name "*.ckpt" \) \
+  -printf '%p  (%s bytes)\n'
+```
+
+Host checkpoint directory:
+
+```text
+/home/ubuntu/work/nemotron-poc/results/official_finetune/smoke-2-20261009T092152Z/nemotron_nsc/smoke-2-20261009T092152Z/checkpoints/
+```
+
+The outer run directory belongs to the launcher; `nemotron_nsc/<run-id>/checkpoints` is the experiment-manager nesting inside that mount.
+
+| Observed file | Reported size |
+| --- | ---: |
+| `nemotron_nsc--val_wer=1.6667-epoch=0.ckpt` | 7,660,848,351 bytes |
+| `nemotron_nsc.nemo` | 2,553,098,240 bytes |
+| `nemotron_nsc--val_wer=1.6667-epoch=0-last.ckpt` | 7,660,848,415 bytes |
+
+All three files were observed on the host. Existence and byte sizes do **not** establish integrity through restoration or a successful evaluation.
+
+A `.ckpt` is a Lightning/NeMo training checkpoint intended for restoring training state where the recipe supports it. A `.nemo` is a model export for restoration/inference. The exports here are approximately **7.66 GB** per training checkpoint versus **2.55 GB** for the model export (decimal units). Training checkpoints may carry optimizer and other training state as well as weights; their exact contents have not been inspected. The chosen fine-tuning entry point initializes from `.nemo`, not a demonstrated `.ckpt` resume.
+
+Checkpointing has storage/I/O requirements independent of GPU compute. Consider persistent capacity, write throughput, checkpoint frequency, retention, recovery requirements, and whether an artifact actually restores. The model files and console logs remain on the host, outside Git.
+
+### Why smoke-test validation WER is not the baseline comparison
+
+The training log's `val_wer=1.66667` is a fraction, approximately **166.67%**. It is **not directly comparable** with the pretrained **10.84%** baseline:
+
+- Smoke validation used only **two batches**; baseline evaluation used all **50 fixed recordings**.
+- Training-time WER follows a different evaluation path from the separate baseline evaluator's identical reference/prediction normalization.
+- Raw output can include language tags, capitalization, and punctuation; the baseline excludes these scoring differences while preserving raw text.
+- Only two optimizer steps ran to prove functionality, not recognition-quality improvement.
+
+Do not infer improved or degraded model quality. A valid comparison changes **only the checkpoint**: keep the same 50 recordings, prompt/transcription settings, decoding behavior, normalization, and scoring implementation. The existing baseline remains **50 recordings / 793 reference words / 10.84% offline WER**.
+
+The checkpoint filename contains `val_wer=1.6667` because the current callback monitors training-time validation WER. **TODO before longer training:** confirm an appropriate checkpoint-selection metric and its normalization/decoding policy. Successful checkpoint saving is not evidence of useful model selection.
+
+## Next: restore and evaluate the exported checkpoint — planned
+
+The single next milestone is **restore the existing two-step export and evaluate the same fixed 50-record validation set**, before another training run.
+
+Target on the Brev host:
+
+```text
+/home/ubuntu/work/nemotron-poc/results/official_finetune/smoke-2-20261009T092152Z/nemotron_nsc/smoke-2-20261009T092152Z/checkpoints/nemotron_nsc.nemo
+```
+
+Capture/review the exact host `baseline_eval.py`, then adapt it to accept an optional **`--model-path`** while retaining its original pretrained default. That modification, deployment, checkpoint restoration, and new evaluation are **pending**. No speculative evaluation command or reconstructed evaluator is represented as executed.
+
+Restore the export, use the same `dev_50.jsonl`, explicit `en-US` prompt, transcription/decoding settings, text normalization, and NeMo WER scoring as the baseline. Preserve raw and normalized predictions plus metadata in a new persistent results directory; compare with **10.84%** only after establishing those settings match. Then consider longer fine-tuning and GPU capacity measurements. Final model selection, configuration freeze, NSC test, GigaSpeech, true streaming, and latency/performance remain later milestones.
+
+Seed **42** and deterministic data sampling remain recorded. Artifact hashing or byte-for-byte regeneration is optional stricter production rigor, not a required tutorial gate.
 
 ## Completion boundaries and next step
 
@@ -1066,9 +1343,12 @@ Fixed seed **42** and deterministic sampling remain part of the POC design. Arti
 | Single-utterance pretrained NSC GPU inference | Complete and verified on October 9, 2026: `cuda:0`; reference `uh correct` → raw prediction `Uh correct. <en-US>` |
 | Fixed 50-utterance baseline / validation WER | Complete on October 9, 2026: 50 recordings, 793 reference words, 10.84% offline WER |
 | Exact baseline evaluator source in Git | Pending: executed host file needed; no reconstructed equivalent committed |
-| Training smoke test | Not yet complete |
-| Fine-tuning | Not yet complete |
-| Checkpointing | Not yet complete |
+| Official training smoke test | Complete on October 9, 2026: two optimizer steps on L4, limited validation executed |
+| Longer/full fine-tuning | Pending; only the two-step functionality run is verified |
+| Checkpoint/model saving | Complete: two .ckpt files and one .nemo export observed with byte sizes |
+| Checkpoint restoration/integrity | Pending: artifacts have not been independently restored |
+| Fine-tuned fixed 50-record WER | Pending: use the same baseline policies |
+| Checkpoint-selection metric review | Pending before longer training; training-time WER is not the baseline score |
 | Checkpoint/model comparison on validation | Not yet complete |
 | Post-training evaluation | Not yet complete |
 | Final model/configuration | Not yet finalized |
@@ -1082,11 +1362,11 @@ Fixed seed **42** and deterministic sampling remain part of the POC design. Arti
 
 ### End-of-day checkpoint
 
-**Current checkpoint (October 9, 2026):** Pretrained single-utterance GPU inference and offline evaluation of all 50 fixed validation recordings are complete. The L4 run reported `EncDecRNNTBPEModelWithPrompt` on `cuda:0`, **793 reference words and 10.84% WER**, with prediction/metric files saved under the host `results/baseline` directory. Baseline normalization/configuration is recorded above; exact evaluator source is still awaited. Training and checkpoint comparison remain unexecuted.
+**Current checkpoint (October 9, 2026):** The official two-step L4 training smoke test completed as `smoke-2-20261009T092152Z`, and two `.ckpt` files plus `nemotron_nsc.nemo` were observed on persistent host storage. Checkpoint restoration and quality comparison remain unexecuted. The original pretrained baseline remains **50 recordings / 793 reference words / 10.84% offline WER**; its exact evaluator source is still awaited.
 
-**Next session:** Prepare and run the training smoke test using the 300-record train manifest. Keep validation fixed, retain the pretrained baseline, and capture the exact evaluator/configuration for consistent later comparisons.
+**Next session:** Restore/evaluate the existing export on the fixed 50 recordings with identical prompt, decoding, normalization, and scoring policies. Capture the exact evaluator and add the planned optional `--model-path`; do not begin another training run first.
 
-Later: training smoke test → fine-tune on train → validation/development loop → freeze checkpoint/configuration/scoring → `nsc_test` → `gigaspeech_test`. Both evaluations remain unstarted. The infrastructure progression remains Docker validation → actual Nemotron inference → streaming inference → package the workload → SLURM; streaming and scheduler work remain future milestones.
+Later: longer fine-tuning → validation/development loop → freeze checkpoint/configuration/scoring → `nsc_test` → `gigaspeech_test` → streaming latency/performance. These remain pending. The infrastructure progression remains Docker validation → actual Nemotron inference → streaming inference → package the workload → SLURM; streaming and scheduler work remain future milestones.
 
 ## Troubleshooting notes
 

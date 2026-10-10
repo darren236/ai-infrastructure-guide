@@ -53,8 +53,15 @@ asr-audio/
 asr-data/
 nsc_query_5h/
 nsc_dev_3h/
+nsc_test/
+gigaspeech_test/
 nsc-query.tar.gz
 nsc-dev.tar.gz
+# Upstream checkout is a separate pinned recipe input, not vendored source
+nemo-speech-src/
+# Raw experiment outputs can contain transcripts as well as model binaries
+results/
+official_finetune/
 checkpoints/
 models/
 outputs/
@@ -67,6 +74,13 @@ lightning_logs/
 *.safetensors
 *.nemo
 *.onnx
+# Source/derived audio and known transcript-bearing manifests or predictions
+*.flac
+*.wav
+manifest.jsonl
+train_300.jsonl
+dev_50.jsonl
+*_predictions.jsonl
 
 # Unreviewed logs and local scratch files
 *.bad

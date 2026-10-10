@@ -26,7 +26,7 @@ Use the [current progress](PROGRESS.md#current-state) for the latest checkpoint,
 7. [PyTorch / NeMo](docs/guides/01-brev-gpu-node-validation.md#7-pytorch--nemo) — check framework CUDA access and model placement.
 8. [Application](docs/guides/01-brev-gpu-node-validation.md#8-application) — process real inputs and verify the output; continue into Guide 02.
 
-**Status:** Host/driver visibility, container GPU access, compiler inspection, and framework access are validated for the reported checks. Guide 02 now verifies one pretrained NSC GPU transcription. Standalone CUDA kernel/tensor checks, training, and benchmarks remain pending; Guide 01 is in progress.
+**Status:** Host/driver visibility, container GPU access, compiler inspection, and framework access are validated for the reported checks. Guide 02 verifies pretrained NSC GPU inference, a 50-record offline baseline, and an official two-step training smoke test with saved artifacts. Standalone CUDA kernel/tensor checks, longer training, and benchmarks remain pending; Guide 01 is in progress.
 
 ### Guide 02 — Adapting NVIDIA Nemotron 3.5 Streaming ASR to Singapore English
 
@@ -43,17 +43,17 @@ Use the [current progress](PROGRESS.md#current-state) for the latest checkpoint,
 5. [Normalize derived transcripts](docs/guides/02-nemotron-streaming-singapore-english.md#transcript-annotation-normalization--complete) — complete: noise-tag cleanup and whitespace normalization preserve spoken words and metadata; baseline scoring policy recorded in the guide.
 6. [Convert to Nemotron manifests](docs/guides/02-nemotron-streaming-singapore-english.md#nemotron-compatible-manifest-conversion--complete) — complete: five fields, 300/50 records, selected audio paths found, and one record per split inspected.
 7. [Run one validation utterance on GPU](docs/guides/02-nemotron-streaming-singapore-english.md#single-utterance-pretrained-gpu-inference--complete), then the [fixed 50-record offline baseline](docs/guides/02-nemotron-streaming-singapore-english.md#pretrained-50-utterance-validation-baseline--complete) — both complete on October 9, 2026; 793 reference words, 10.84% WER.
-8. Fine-tune on train only, starting with a training smoke test.
-9. Use validation for development/model selection.
+8. [Exercise official training on the L4](docs/guides/02-nemotron-streaming-singapore-english.md#official-nemo-fine-tuning--two-step-gpu-smoke-test) — two-step smoke test and checkpoint saving complete; longer fine-tuning pending.
+9. [Restore/evaluate the saved export on fixed validation](docs/guides/02-nemotron-streaming-singapore-english.md#next-restore-and-evaluate-the-exported-checkpoint--planned) — next; compare under identical policies before longer training and development/model selection.
 10. Freeze the model/configuration, normalization, and decoding settings.
 11. Evaluate `nsc_test` for final held-out Singapore-English results.
 12. Evaluate `gigaspeech_test` for external/OOD generalization and regressions after the NSC test.
 
-**Status:** Setup, source checks, POC subset preparation/validation, transcript normalization, five-field Nemotron manifest conversion, single-utterance GPU inference, and the fixed 50-record offline baseline are complete for the reported checks. Selected subsets have **300 train utterances / 111 speakers / ~0.66 h** and **50 validation utterances / 50 speakers / ~0.11 h**, using seed 42, no `<unk>`, and no shared speakers/IDs. Conversion reported 300/50 records and found selected audio files; one final record per split was inspected. These preparation checks establish records and paths. All 50 validation recordings were subsequently transcribed on GPU; training-loader compatibility remains unverified. Ownership correction covered only the original subset files; new-output ownership was not reported.
+**Status:** Setup, source checks, POC subset preparation/validation, transcript normalization, five-field Nemotron manifest conversion, single-utterance GPU inference, the fixed 50-record offline baseline, and the official two-step training smoke test with checkpoint saving are complete for the reported checks. Selected subsets have **300 train utterances / 111 speakers / ~0.66 h** and **50 validation utterances / 50 speakers / ~0.11 h**, using seed 42, no `<unk>`, and no shared speakers/IDs. Conversion reported 300/50 records and found selected audio files; one final record per split was inspected. These preparation checks establish records and paths. All 50 validation recordings were transcribed on GPU; the official Lhotse training/optimizer path subsequently ran for two steps. All 300 training recordings remained duration-eligible, without evidence that all were consumed. Data-file ownership correction covered only the original subset files; the parent results directory was corrected separately. New normalized/NeMo-file ownership was not reported.
 
-**Current checkpoint (October 9, 2026):** The original pretrained Nemotron model completed all 50 fixed NSC validation recordings on the L4: **793 reference words / 10.84% offline WER**. The [guide](docs/guides/02-nemotron-streaming-singapore-english.md#pretrained-50-utterance-validation-baseline--complete) records the command, scoring policy, and persistent output paths. This is a small development-set result, not a production benchmark or streaming WER. The exact Brev `baseline_eval.py` source is still awaited; no reconstructed implementation is committed.
+**Current checkpoint (October 9, 2026):** [Official two-step GPU training](docs/guides/02-nemotron-streaming-singapore-english.md#official-nemo-fine-tuning--two-step-gpu-smoke-test) completed on the L4 using pinned NeMo Speech v3.0.0 recipes and `nvcr.io/nvidia/nemo-speech:26.07.00`. Run `smoke-2-20261009T092152Z` saved two `.ckpt` files and one `.nemo` export on persistent host storage. Their existence/sizes are reported; restoration and quality comparison remain pending. The pretrained baseline remains **50 recordings / 793 reference words / 10.84% offline WER**. The smoke log's `val_wer=1.66667` used two batches and a different scoring path; it is not comparable with that baseline.
 
-**Next session:** Prepare/run the training smoke test, then fine-tune on the 300-record training set. Preserve the fixed validation set, original baseline, raw predictions, and identical scoring/decoding policies for checkpoint comparisons. Training, checkpoint comparison, post-training/held-out evaluation, and true streaming performance testing remain pending.
+**Next session:** Restore/evaluate the existing two-step export on the same 50 recordings with identical prompt, decoding, normalization, and scoring. Capture the exact Brev `baseline_eval.py` and add the planned optional `--model-path`; its source is still awaited. Longer fine-tuning, checkpoint-quality comparison, held-out evaluation, and true streaming performance remain pending. No model-quality improvement is claimed.
 
 ## Future guides
 
@@ -76,7 +76,8 @@ ai-infrastructure-guide/
 │       ├── create_poc_subsets.py
 │       ├── normalize_transcripts.py
 │       ├── convert_to_nemo_manifest.py
-│       └── baseline_smoke.py
+│       ├── baseline_smoke.py
+│       └── run_nsc_train.sh
 └── docs/
     └── guides/
         ├── README.md         # Short directory index
@@ -84,7 +85,7 @@ ai-infrastructure-guide/
         └── 02-nemotron-streaming-singapore-english.md
 ```
 
-The [written guides](docs/guides/README.md) contain commands, architecture explanations, and recorded evidence. Runnable assets live under `scripts/guide-NN/`; the [Guide 02 tooling index](scripts/guide-02/README.md) explains six preparation helpers and the one-record GPU inference script. The inference script implements the reported successful workflow; it has not been compared byte-for-byte with the Brev copy. Repository scripts and the Brev workspace are separate locations; a commit does not deploy a helper to the node. The [progress log](PROGRESS.md) separates current status from historical milestones; the [roadmap](ROADMAP.md) holds future topics.
+The [written guides](docs/guides/README.md) contain commands, architecture explanations, and recorded evidence. Runnable assets live under `scripts/guide-NN/`; the [Guide 02 tooling index](scripts/guide-02/README.md) explains six preparation helpers, the one-record GPU inference script, and the official-training launcher. The inference script implements the reported workflow; the training launcher is reconstructed from supplied command history. Neither has been compared byte-for-byte with the Brev copy or independently GPU-tested here. Repository scripts and the Brev workspace are separate locations; a commit does not deploy a helper to the node. The [progress log](PROGRESS.md) separates current status from historical milestones; the [roadmap](ROADMAP.md) holds future topics.
 
 ## Documentation standard
 
