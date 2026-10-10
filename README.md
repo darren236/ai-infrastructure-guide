@@ -26,7 +26,7 @@ Use the [current progress](PROGRESS.md#current-state) for the latest checkpoint,
 7. [PyTorch / NeMo](docs/guides/01-brev-gpu-node-validation.md#7-pytorch--nemo) — check framework CUDA access and model placement.
 8. [Application](docs/guides/01-brev-gpu-node-validation.md#8-application) — process real inputs and verify the output; continue into Guide 02.
 
-**Status:** Host/driver visibility, container GPU access, compiler inspection, and framework access are validated for the reported checks. Guide 02 verifies pretrained NSC GPU inference, a 50-record offline baseline, and an official two-step training smoke test followed by export restoration/evaluation and baseline reproduction. Standalone CUDA kernel/tensor checks, longer training, and benchmarks remain pending; Guide 01 is in progress.
+**Status:** Host/driver visibility, container GPU access, compiler inspection, and framework access are validated for the reported checks. Guide 02 verifies pretrained NSC GPU inference, a 50-record offline baseline, and an official two-step training smoke test followed by export restoration/evaluation and baseline reproduction. Standalone CUDA kernel/tensor checks, further training beyond the completed 100-step pilot, and benchmarks remain pending; Guide 01 is in progress.
 
 ### Guide 02 — Adapting NVIDIA Nemotron 3.5 Streaming ASR to Singapore English
 
@@ -47,9 +47,9 @@ Follow these ten stages from node readiness to final evaluation. Each link gives
 9. [Held-out NSC test](docs/guides/02-nemotron-streaming-singapore-english.md#9-held-out-nsc-test) — freeze model, decoding, and scoring choices before evaluating `nsc_test`.
 10. [External benchmark](docs/guides/02-nemotron-streaming-singapore-english.md#10-external-benchmark) — check `gigaspeech_test` for generalization/regressions after the NSC test, without routine tuning.
 
-**Current position (October 10, 2026):** Setup, data preparation, pretrained inference, two-step training, export saving/restoration, and comparable offline evaluation are verified from operator evidence. On **50 recordings / 793 reference words**, the pretrained baseline reproduced at **10.84% WER**; the two-step export scored **10.97% WER**. The workflow works, but this smoke test did not improve transcription accuracy. Configuration and duration audits are complete: **300/300 eligible training records / 0.656 h**. The **100-step pilot is configured; execution is not yet confirmed**. Longer training, model selection, held-out evaluation, and streaming/performance remain pending.
+**Current position (October 10, 2026):** Two-step smoke training/export evaluation, the configuration/data audits, and the **100-step pilot** are complete from operator evidence. On **50 recordings / 793 reference words**, offline WER was **10.84% pretrained**, **10.97% smoke**, and **10.47% pilot**. Recording-level comparison found **9 improved / 7 worsened / 34 equal-error-count recordings**, three fewer errors overall (**3.49% relative reduction**). This is preliminary development-set improvement. Further 300-/600-step training, final model selection, held-out testing, and streaming/performance remain pending.
 
-**Next check — stage 8:** Verify pilot launch prerequisites, run from original pretrained weights, and capture optimization, validation, resource, checkpoint, and restored-model evaluation evidence before deciding on longer training. The host evaluator already supports pretrained and exported models; no code change was needed. Its exact source remains outside Git. See [current progress](PROGRESS.md#guide-02-end-of-day-checkpoint) and [completion boundaries](docs/guides/02-nemotron-streaming-singapore-english.md#completion-boundaries-and-next-step).
+**Next check — stage 8:** Investigate pilot training behavior, validation scheduling, Lhotse sampling/data exposure, and checkpoint/export provenance before further training. The operator-supplied [evaluator](scripts/guide-02/baseline_eval.py) is now retained unchanged; no scoring-policy change was needed. See [current progress](PROGRESS.md#guide-02-end-of-day-checkpoint) and [completion boundaries](docs/guides/02-nemotron-streaming-singapore-english.md#completion-boundaries-and-next-step).
 
 ## Future guides
 
@@ -73,6 +73,7 @@ ai-infrastructure-guide/
 │       ├── normalize_transcripts.py
 │       ├── convert_to_nemo_manifest.py
 │       ├── baseline_smoke.py
+│       ├── baseline_eval.py
 │       └── run_nsc_train.sh
 └── docs/
     └── guides/
@@ -81,7 +82,7 @@ ai-infrastructure-guide/
         └── 02-nemotron-streaming-singapore-english.md
 ```
 
-The [written guides](docs/guides/README.md) contain commands, architecture explanations, and recorded evidence. Runnable assets live under `scripts/guide-NN/`; the [Guide 02 tooling index](scripts/guide-02/README.md) explains six preparation helpers, the one-record GPU inference script, and the official-training launcher. The inference script implements the reported workflow; the training launcher is reconstructed from supplied command history, with the October 10 operator-supplied pilot case added. Neither has been compared byte-for-byte with the Brev copy or independently GPU-tested here. Repository scripts and the Brev workspace are separate locations; a commit does not deploy a helper to the node. The [progress log](PROGRESS.md) separates current status from historical milestones; the [roadmap](ROADMAP.md) holds future topics.
+The [written guides](docs/guides/README.md) contain commands, architecture explanations, and recorded evidence. Runnable assets live under `scripts/guide-NN/`; the [Guide 02 tooling index](scripts/guide-02/README.md) explains six preparation helpers, the one-record GPU inference script, shared offline evaluator, and official-training launcher. The inference script implements the reported workflow; the training launcher is reconstructed from supplied command history, with the October 10 operator-supplied pilot case added. Neither has been compared byte-for-byte with the Brev copy or independently GPU-tested here. Repository scripts and the Brev workspace are separate locations; a commit does not deploy a helper to the node. The [progress log](PROGRESS.md) separates current status from historical milestones; the [roadmap](ROADMAP.md) holds future topics.
 
 ## Documentation standard
 

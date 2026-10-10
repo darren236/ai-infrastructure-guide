@@ -6,7 +6,7 @@
 #
 # Modes:
 #   smoke : 2 optimizer steps
-#   pilot : 100 optimizer steps; prepared, execution not yet confirmed
+#   pilot : 100 optimizer steps; completed October 10, 2026
 #   full  : configurable optimizer steps
 #
 # Usage:
@@ -21,7 +21,8 @@
 
 # All modes use the same official restoration/training pipeline.
 # Smoke limits validation to two batches; full uses a validation fraction of 1.0.
-# Pilot checks every 50 training batches, using the full validation dataloader.
+# Pilot requests checks every 50 training batches and full validation coverage.
+# Step-100 validation is reported; step-50 events remain a log-review task.
 # Accumulation inherits 1 from the audited source YAML; confirm resolved config.
 # The full 600-step example is illustrative and has not been executed.
 set -euo pipefail
