@@ -4,7 +4,7 @@ Practical AI infrastructure guides and a technical portfolio demonstrating NVIDI
 
 Start with **Guide 01** to understand and validate the GPU stack, then follow **Guide 02** into a small Nemotron ASR fine-tuning POC. Each guide's agenda is below; open the guide for commands, explanations, observed results, and pending work.
 
-Use the [current progress](PROGRESS.md#current-state) for the latest checkpoint, [milestone history](PROGRESS.md#milestone-history) for earlier evidence, [helper-script index](scripts/guide-02/README.md) for runnable tooling, and [roadmap](ROADMAP.md) for future topics.
+Use the [current progress](PROGRESS.md#current-state) for the latest checkpoint, [milestone history](PROGRESS.md#milestone-history) for earlier evidence, [helper-script index](scripts/guide-02/README.md) for repository tooling and host-only evaluation, and [roadmap](ROADMAP.md) for future topics.
 
 ## Guides and agendas
 
@@ -26,7 +26,7 @@ Use the [current progress](PROGRESS.md#current-state) for the latest checkpoint,
 7. [PyTorch / NeMo](docs/guides/01-brev-gpu-node-validation.md#7-pytorch--nemo) — check framework CUDA access and model placement.
 8. [Application](docs/guides/01-brev-gpu-node-validation.md#8-application) — process real inputs and verify the output; continue into Guide 02.
 
-**Status:** Host/driver visibility, container GPU access, compiler inspection, and framework access are validated for the reported checks. Guide 02 verifies pretrained NSC GPU inference, a 50-record offline baseline, and an official two-step training smoke test with saved artifacts. Standalone CUDA kernel/tensor checks, longer training, and benchmarks remain pending; Guide 01 is in progress.
+**Status:** Host/driver visibility, container GPU access, compiler inspection, and framework access are validated for the reported checks. Guide 02 verifies pretrained NSC GPU inference, a 50-record offline baseline, and an official two-step training smoke test followed by export restoration/evaluation and baseline reproduction. Standalone CUDA kernel/tensor checks, longer training, and benchmarks remain pending; Guide 01 is in progress.
 
 ### Guide 02 — Adapting NVIDIA Nemotron 3.5 Streaming ASR to Singapore English
 
@@ -47,9 +47,9 @@ Follow these ten stages from node readiness to final evaluation. Each link gives
 9. [Held-out NSC test](docs/guides/02-nemotron-streaming-singapore-english.md#9-held-out-nsc-test) — freeze model, decoding, and scoring choices before evaluating `nsc_test`.
 10. [External benchmark](docs/guides/02-nemotron-streaming-singapore-english.md#10-external-benchmark) — check `gigaspeech_test` for generalization/regressions after the NSC test, without routine tuning.
 
-**Current position:** Setup, train/validation preparation, pretrained inference/baseline, and two-step training with artifact saving are verified for the reported scope. Baseline: **50 recordings / 10.84% offline WER**. Longer training, checkpoint comparison, held-out evaluation, and streaming/performance remain pending.
+**Current position (October 10, 2026):** Setup, data preparation, pretrained inference, two-step training, export saving/restoration, and comparable offline evaluation are verified from operator evidence. On **50 recordings / 793 reference words**, the pretrained baseline reproduced at **10.84% WER**; the two-step export scored **10.97% WER**. The workflow works, but this smoke test did not improve transcription accuracy. Longer training, model selection, held-out evaluation, and streaming/performance remain pending.
 
-**Next check — stage 8:** Restore/evaluate the saved export on the same 50 recordings under identical baseline policies. The exact evaluator source is still awaited; saved artifacts have not yet been reloaded or shown to improve quality. See [current progress](PROGRESS.md#guide-02-end-of-day-checkpoint) and [completion boundaries](docs/guides/02-nemotron-streaming-singapore-english.md#completion-boundaries-and-next-step).
+**Next check — stage 8:** Inspect the existing Brev training launcher and official configuration before a longer experiment starting from the original pretrained model. The host evaluator already supports pretrained and exported models; no code change was needed. Its exact source remains outside Git. See [current progress](PROGRESS.md#guide-02-end-of-day-checkpoint) and [completion boundaries](docs/guides/02-nemotron-streaming-singapore-english.md#completion-boundaries-and-next-step).
 
 ## Future guides
 

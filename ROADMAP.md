@@ -13,7 +13,7 @@ This roadmap covers future topics. Milestones 03–08 are planned; their numbers
 | 07 — Observability and troubleshooting | Inspect GPU and workload metrics, correlate logs, and investigate controlled failure scenarios. | Monitoring configuration, observed symptoms, diagnostic steps, and recovery evidence. |
 | 08 — Architecture synthesis | Connect compute, scheduling, networking, and storage requirements into a documented AI infrastructure design. | Architecture diagram, tradeoff analysis, reproducible benchmark method, and clearly bounded conclusions. |
 
-For the active ASR POC, continue with [Guide 02 stage 8 — checkpoint comparison and development](docs/guides/02-nemotron-streaming-singapore-english.md#8-checkpoint-comparison-and-development). Held-out NSC testing (stage 9) and GigaSpeech evaluation (stage 10) follow finalized development choices. Streaming/performance, workload packaging, and Slurm submission are later work.
+For the active ASR POC, continue with [Guide 02 stage 8 — checkpoint comparison and development](docs/guides/02-nemotron-streaming-singapore-english.md#8-checkpoint-comparison-and-development). The two-step export evaluation and baseline recheck are complete: 10.97% versus 10.84% offline WER. Next: inspect the existing launcher and official configuration before longer training and model selection. Held-out NSC testing (stage 9) and GigaSpeech evaluation (stage 10) follow finalized development choices. Streaming/performance, workload packaging, and Slurm submission are later work.
 
 ## Milestone completion criteria
 
