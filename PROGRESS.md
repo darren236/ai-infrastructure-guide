@@ -323,6 +323,12 @@ Both steps ran without a GPU request in the same version-tagged NeMo image; no d
 
 **Next:** [Restore/evaluate the saved two-step export](docs/guides/02-nemotron-streaming-singapore-english.md#next-restore-and-evaluate-the-exported-checkpoint--planned) on fixed `dev_50.jsonl` with identical prompt, decoding, normalization, and WER scoring. Capture the evaluator and add the optional `--model-path` (pending), preserve raw/normalized outputs, and only then compare against 10.84%. Longer fine-tuning, checkpoint-quality selection, held-out NSC/GigaSpeech evaluation, and streaming performance remain pending.
 
+### 2026-10-10 — Guide 02 overview aligned with ordered execution checks
+
+Reviewed the repository navigation and rewrote Guide 02's README outline as ten concise stages: node resources → NeMo container → pretrained model → data strategy/source checks → prepared train/validation inputs → pretrained baseline → training/artifacts → checkpoint comparison/development → frozen NSC test → external benchmark. The guide agenda and directory index now use the same order.
+
+This is a documentation change. Existing commands, source/preparation methods, scripts, results, historical milestones, and completion boundaries are preserved. The next technical check remains restoration/evaluation of the two-step export on fixed validation; longer training, held-out evaluation, and streaming/performance are still pending.
+
 ## Updating this log
 
 For each meaningful milestone, add a dated entry with the objective, work performed, links to evidence, observed result, blockers or lessons, and next step. Identify documentation sync dates and execution dates separately when known. Update **Current state** to match the latest evidence, while preserving earlier milestone snapshots. Distinguish prepared instructions from performed and validated work.

@@ -24,7 +24,7 @@ Build a small proof of concept (POC) and tutorial for fine-tuning `nvidia/nemotr
 
 ## Guide 02 workflow agenda
 
-[Node preflight](#node-preflight--complete), [NeMo/model loading](#nemo-container-and-model-on-gpu--complete), source inspection/separation, annotation auditing, subset generation/validation, [normalization](#transcript-annotation-normalization--complete), and [Nemotron manifest conversion](#nemotron-compatible-manifest-conversion--complete) are complete for the operator-reported checks. Conversion found all 300/50 selected audio files, and one final record per split was inspected. On **October 9, 2026**, the original pretrained model successfully transcribed one recording and then all **50 fixed validation recordings** on the L4. The offline baseline reported **793 reference words and 10.84% WER**. The official two-step training smoke test and checkpoint saving also completed that day. Next: restore/evaluate the saved model; longer training and steps 9–12 remain pending.
+[Node preflight](#node-preflight--complete), [NeMo/model loading](#nemo-container-and-model-on-gpu--complete), source inspection/separation, annotation auditing, subset generation/validation, [normalization](#transcript-annotation-normalization--complete), and [Nemotron manifest conversion](#nemotron-compatible-manifest-conversion--complete) are complete for the operator-reported checks. Conversion found all 300/50 selected audio files, and one final record per split was inspected. On **October 9, 2026**, the original pretrained model successfully transcribed one recording and then all **50 fixed validation recordings** on the L4. The offline baseline reported **793 reference words and 10.84% WER**. The official two-step training smoke test and checkpoint saving also completed that day. Next is stage 8 of the agenda below: restore/evaluate the saved model before longer training and model selection. Configuration freeze, NSC test, and external evaluation remain pending.
 
 ### Current pipeline status
 
@@ -81,18 +81,20 @@ Streaming latency / performance — PENDING
 
 ### Hands-on agenda
 
-1. [Verify source manifests on the node](#split-construction-and-hands-on-verification) — counts checked; full-source audio integrity not audited.
-2. [Verify speaker and utterance-ID separation](#split-construction-and-hands-on-verification) — complete for train/validation; NSC test checks pending.
-3. [Inspect and count transcript annotation tokens](#transcript-annotation-audit--complete) and [measure POC eligibility](#poc-eligibility-impact--complete) — complete; annotation policy decided.
-4. [Create deterministic speaker-aware POC subsets](#deterministic-poc-subset-generation--complete) — 300/50 generated; ownership, counts, tags, speakers, and separation independently checked.
-5. [Normalize derived transcripts](#transcript-annotation-normalization--complete) — complete: noise tags removed, whitespace cleaned, spoken words and metadata preserved; baseline scoring policy recorded below.
-6. [Convert to Nemotron manifests](#nemotron-compatible-manifest-conversion--complete) — complete: five fields, 300/50 records, selected file paths found; one record per split inspected.
-7. [Run one validation utterance on GPU](#single-utterance-pretrained-gpu-inference--complete), then the [fixed 50-utterance baseline/WER](#pretrained-50-utterance-validation-baseline--complete) — both complete on October 9, 2026; offline baseline: 10.84% WER over 793 reference words.
-8. [Exercise official training on the L4](#official-nemo-fine-tuning--two-step-gpu-smoke-test) — two-step smoke test and checkpoint saving complete; longer fine-tuning pending.
-9. [Restore/evaluate the saved export on fixed validation](#next-restore-and-evaluate-the-exported-checkpoint--planned) — next; compare under identical policies before longer training and development/model selection.
-10. Freeze the model/configuration: checkpoint, normalization, and decoding settings.
-11. Evaluate `nsc_test` for final held-out Singapore-English results — planned.
-12. Evaluate `gigaspeech_test` for external/OOD generalization and regressions after the NSC test — planned.
+Follow the same ten stages as the [README overview](../../README.md#guide-02--adapting-nvidia-nemotron-35-streaming-asr-to-singapore-english). These are execution checks; the data-role overview below explains why train, validation, test, and benchmark remain separate. Source/derived-data checks are detailed within stages 4–5.
+
+1. [Node resources](#node-preflight--complete) — check disk, host RAM, and GPU availability.
+2. [NeMo container](#nemo-container-and-model-on-gpu--complete) — check the pinned Speech container's NeMo version and imports.
+3. [Pretrained model](#nemo-container-and-model-on-gpu--complete) — restore Nemotron with persistent caching and confirm GPU placement.
+4. [Data strategy and source checks](#data-strategy-and-experiment-overview) — define data roles and verify records, split separation, and annotation tags.
+5. [Training and validation inputs](#deterministic-poc-subset-generation--complete) — build deterministic subsets, normalize text, and verify NeMo audio paths and language fields.
+6. [Pretrained inference and baseline](#pretrained-50-utterance-validation-baseline--complete) — verify one transcription, then establish offline WER on fixed validation.
+7. [Training smoke test and artifacts](#official-nemo-fine-tuning--two-step-gpu-smoke-test) — run the official GPU smoke test and verify persistent checkpoint files.
+8. [Checkpoint comparison and development](#next-restore-and-evaluate-the-exported-checkpoint--planned) — restore and compare on fixed validation; iterate longer training and model selection.
+9. [Held-out NSC test](#evaluation-preparation--todo) — freeze model, decoding, and scoring choices before evaluating `nsc_test`.
+10. [External benchmark](#evaluation-preparation--todo) — check `gigaspeech_test` for generalization/regressions after the NSC test, without routine tuning.
+
+**Current position:** The reported setup, train/validation preparation, pretrained baseline, and two-step training/artifact checks are complete. **Stage 8 is next:** checkpoint restoration and a comparable fixed-50 evaluation; longer training and model selection follow. Stage 9's configuration freeze/test and stage 10's external evaluation are planned. Test/benchmark data preparation and overlap checks also remain pending.
 
 Perform data preparation in the SSH-connected GPU host's working directory, outside Git. Download there and bind-mount host data into the container; a laptop path is not automatically available on the remote node. Record source locations/versions, scripts/seed, selected IDs, overlap results, cleanup/scoring rules, container/model versions, and run settings. Keep validation IDs fixed; when scoring rules change, rescore both models consistently. Annotation cleanup, manifest preparation, and the baseline scoring/transcription policy are recorded below. Preserve that policy for comparisons; two-step training settings are recorded below, while longer-run choices and the final model/configuration freeze remain pending.
 
