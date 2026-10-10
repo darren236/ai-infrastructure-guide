@@ -2,9 +2,9 @@
 
 [Repository overview](../../README.md#guides-and-agendas) · [Guide 02 agenda](../../docs/guides/02-nemotron-streaming-singapore-english.md#hands-on-agenda) · [Current stage 8](../../docs/guides/02-nemotron-streaming-singapore-english.md#8-checkpoint-comparison-and-development)
 
-These seven Python helpers and one Bash launcher cover operator-reported NSC preparation, pretrained GPU inference, and official training. The six preparation helpers use Python's standard library; `baseline_smoke.py` uses PyTorch and NeMo inside the existing container. The Python helpers accept runtime manifest/path arguments. The Bash launcher selects smoke/full mode and uses the reported host directory layout. Normalization/conversion retain the supplied session versions; the smoke script implements the reported successful workflow, without a byte-for-byte comparison against Brev. Follow the linked guide sections for the version-tagged NeMo-container commands and reported results; no image digest is recorded. `run_nsc_train.sh` is reconstructed from supplied command history, not byte-verified against Brev or independently GPU-tested here.
+These seven Python helpers and one Bash launcher cover operator-reported NSC preparation, pretrained GPU inference, and official training. The six preparation helpers use Python's standard library; `baseline_smoke.py` uses PyTorch and NeMo inside the existing container. The Python helpers accept runtime manifest/path arguments. The Bash launcher selects smoke/pilot/full mode and uses the reported host directory layout. Normalization/conversion retain the supplied session versions; the smoke script implements the reported successful workflow, without a byte-for-byte comparison against Brev. Follow the linked guide sections for the version-tagged NeMo-container commands and reported results; no image digest is recorded. `run_nsc_train.sh` is reconstructed from supplied command history, with the operator-supplied October 10 pilot case added; the complete file is not byte-verified against Brev or independently GPU-tested here.
 
-The stage numbers below match the README and Guide 02's numbered sections. Run source checks in **stage 4**, derived-input preparation/checks in **stage 5**, pretrained inference in **stage 6**, and official training in **stage 7**. **Stage 8 comparison is complete:** the host evaluator already supports checkpoint paths, and restored-export evaluation plus baseline reproduction are recorded. Next is inspection of the current host launcher/configuration before longer training. The exact evaluator source remains outside this repository. Stages 1–3 use guide commands, and stages 9–10 have no executed tooling in this repository.
+The stage numbers below match the README and Guide 02's numbered sections. Run source checks in **stage 4**, derived-input preparation/checks in **stage 5**, pretrained inference in **stage 6**, and official training in **stage 7**. **Stage 8 comparison is complete:** the host evaluator already supports checkpoint paths, and restored-export evaluation plus baseline reproduction are recorded. The configuration and duration audits are complete; a 100-step pilot is prepared with execution unconfirmed. Next: verify launch prerequisites and collect pilot evidence before longer training. The exact evaluator source remains outside this repository. Stages 1–3 use guide commands, and stages 9–10 have no executed tooling in this repository.
 
 | Stage | Script | Inputs | Effect | Guide section |
 | --- | --- | --- | --- | --- |
@@ -15,7 +15,7 @@ The stage numbers below match the README and Guide 02's numbered sections. Run s
 | 5 | [normalize_transcripts.py](normalize_transcripts.py) | Source-format POC manifest and new output path | Removes approved noise tags, collapses whitespace, preserves other metadata; refuses unexpected tags, empty transcripts, and existing outputs | [Normalization](../../docs/guides/02-nemotron-streaming-singapore-english.md#transcript-annotation-normalization--complete) |
 | 5 | [convert_to_nemo_manifest.py](convert_to_nemo_manifest.py) | Normalized manifest, original dataset root, new output path; `--language en-US` | Checks selected audio-file existence and containment; writes only `audio_filepath`, `duration`, `text`, `lang`, `target_lang`; refuses existing output | [Nemotron conversion](../../docs/guides/02-nemotron-streaming-singapore-english.md#nemotron-compatible-manifest-conversion--complete) |
 | 6 | [baseline_smoke.py](baseline_smoke.py) | Prepared validation JSONL; first recording uses `audio_filepath`, `text`, `target_lang` | Restores pretrained model on GPU, transcribes one recording with explicit non-Lhotse prompt configuration, prints raw reference/prediction; no WER | [Verified inference](../../docs/guides/02-nemotron-streaming-singapore-english.md#single-utterance-pretrained-gpu-inference--complete) |
-| 7 | [run_nsc_train.sh](run_nsc_train.sh) | `smoke` or `full <steps>`; pinned NVIDIA source, 300/50 manifests/audio, cached pretrained export | Runs official NeMo training; writes checkpoints/model export and console logs to persistent host output | [Two-step training](../../docs/guides/02-nemotron-streaming-singapore-english.md#official-nemo-fine-tuning--two-step-gpu-smoke-test) |
+| 7 / 8 | [run_nsc_train.sh](run_nsc_train.sh) | `smoke`, `pilot`, or `full <steps>`; pinned NVIDIA source, 300/50 manifests/audio, cached pretrained export | Runs official NeMo training; writes checkpoints/model export and console logs to persistent host output | [Two-step training](../../docs/guides/02-nemotron-streaming-singapore-english.md#official-nemo-fine-tuning--two-step-gpu-smoke-test) |
 
 ## Existing host evaluator
 
@@ -25,7 +25,7 @@ There is **no repository copy** to compare with the host file, and its full sour
 
 ## Official training launcher
 
-**Stage 7 — training smoke test and artifacts.** `run_nsc_train.sh` uses NVIDIA's `speech_to_text_finetune.py` and the prompt-aware streaming YAML from **Speech v3.0.0**, supplied by the host source mount. It does not edit upstream code/configuration or implement a custom training loop. The repository version is **reconstructed from the supplied command history**, including `+trainer.limit_val_batches` and `'~model.optim.sched'`. Its command lines retain the reported settings; bytes have not been compared with the executed Brev file.
+**Stages 7–8 — completed smoke test and prepared pilot.** `run_nsc_train.sh` uses NVIDIA's `speech_to_text_finetune.py` and the prompt-aware streaming YAML from **Speech v3.0.0**, supplied by the host source mount. It does not edit upstream code/configuration or implement a custom training loop. The repository version is **reconstructed from the supplied command history**, including `+trainer.limit_val_batches` and `'~model.optim.sched'`. Its command lines retain the reported settings; bytes have not been compared with the executed Brev file.
 
 Required directories **on the GPU host**:
 
@@ -46,15 +46,25 @@ bash ~/work/nemotron-poc/run_nsc_train.sh smoke
 
 The operator completed this mode on October 9, 2026 as `smoke-2-20261009T092152Z`: two optimizer steps, two validation batches, and saved artifacts. The repo copy has only local syntax/fidelity checks, not an independent GPU run. The snapshot path is pinned for this recorded run; verify it exists in the mounted cache before using the launcher on a new node.
 
+Prepared pilot launch, **execution unconfirmed**:
+
+```bash
+cd ~/work/nemotron-poc
+bash -n run_nsc_train.sh
+bash run_nsc_train.sh pilot
+```
+
+The repo was missing `pilot`; its case now matches the supplied host case. Smoke/full values and shared Docker/Hydra settings are preserved. Local Bash syntax and isolated checks with Docker stubbed out passed; no GPU/container training or successful Brev syntax check is claimed. Pilot outputs would use `results/official_finetune/pilot-100-<timestamp>/`; no actual pilot run/artifact exists in the supplied evidence. See the [audit, rationale, and evidence plan](../../docs/guides/02-nemotron-streaming-singapore-english.md#controlled-100-step-pilot--prepared-execution-unconfirmed).
+
 Earlier illustrative longer-run example **not executed; duration/configuration not finalized**:
 
 ```bash
 bash ~/work/nemotron-poc/run_nsc_train.sh full 600
 ```
 
-Both modes use the same core training route. Smoke uses `max_steps=2`, `val_check_interval=2`, `limit_val_batches=2`, and stepwise logging. Full takes a requested step count, uses fractional `1.0` for validation interval/batch limit, and logs every ten steps. A two-step run does not establish full-run capacity or consumption of all 300 recordings.
+All modes use the same core training route. Pilot uses `max_steps=100`, integer `val_check_interval=50`, `limit_val_batches=1.0`, and logging every ten steps. Accumulation inherits `1` from the audited source YAML; confirm the resolved runtime configuration. Smoke uses `max_steps=2`, `val_check_interval=2`, `limit_val_batches=2`, and stepwise logging. Full takes a requested step count, uses fractional `1.0` for validation interval/batch limit, and logs every ten steps. A two-step run does not establish full-run capacity or consumption of all 300 recordings.
 
-The source clone, mount diagnostic, root-owned results fix, Hydra semantics, scheduler decision, and observed artifact sizes are documented in the [training section](../../docs/guides/02-nemotron-streaming-singapore-english.md#official-nemo-fine-tuning--two-step-gpu-smoke-test). The next action in [stage 8 — checkpoint comparison and development](../../docs/guides/02-nemotron-streaming-singapore-english.md#8-checkpoint-comparison-and-development) is reviewing the current host launcher and official configuration before longer training. Export restoration/evaluation and baseline reproduction are complete; the host launcher has not yet been inspected in the current session.
+The source clone, mount diagnostic, root-owned results fix, Hydra semantics, scheduler decision, and observed artifact sizes are documented in the [training section](../../docs/guides/02-nemotron-streaming-singapore-english.md#official-nemo-fine-tuning--two-step-gpu-smoke-test). The next action in [stage 8 — checkpoint comparison and development](../../docs/guides/02-nemotron-streaming-singapore-english.md#8-checkpoint-comparison-and-development) is verifying readiness and collecting pilot evidence before longer training. Export restoration/evaluation, baseline reproduction, the operator configuration audit, and duration eligibility check are complete. Only the current host mode section and YAML excerpt were supplied; full host-file equality remains unverified.
 
 ## Scripts and host paths
 

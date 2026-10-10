@@ -6,17 +6,64 @@
 
 Build a small proof of concept (POC) and tutorial for fine-tuning `nvidia/nemotron-3.5-asr-streaming-0.6b` on Singapore National Speech Corpus (NSC) Part 6, using an NVIDIA L4 24 GB class Brev instance. The goal is a manageable learning exercise, not production-quality tuning. Model loading, dataset preparation, training, and evaluation results are documented only after they are performed.
 
+### Customer requirement and deployment architecture
+
+**Illustrative customer scenario:** a Singapore-based organization wants to determine whether adapting Nemotron to Singapore English yields enough recognition benefit to justify engineering work and GPU spending. This is a decision framework for the learning POC, not a claim of an actual customer engagement or agreed production requirements.
+
+| Component | Recorded technology / role |
+| --- | --- |
+| Compute environment | NVIDIA Brev, Ubuntu, NVIDIA L4 |
+| Host runtime | NVIDIA driver, Docker with NVIDIA GPU support |
+| Application container | `nvcr.io/nvidia/nemo-speech:26.07.00` |
+| ML frameworks | NVIDIA NeMo / PyTorch |
+| Base model | `nvidia/nemotron-3.5-asr-streaming-0.6b` |
+| Training entry point | NVIDIA `speech_to_text_finetune.py`, host-mounted Speech `v3.0.0` source |
+| Data | NSC Part 6; 300 train / 50 development recordings |
+| Quality evaluation | Offline transcription and corpus-level WER |
+
+```text
+NVIDIA Brev instance
+├── Ubuntu host
+│   ├── NVIDIA driver + L4 GPU
+│   ├── Docker / NVIDIA GPU integration
+│   ├── Project workspace, NVIDIA source, model cache
+│   ├── NSC data
+│   └── Persistent experiment results
+└── NeMo Speech container
+    ├── CUDA libraries, PyTorch, NeMo
+    ├── Mounted source/data/models
+    └── Training → export restoration → offline evaluation
+```
+
+Launch Docker from the Ubuntu host; **all model training, restoration, and inference execute inside the pinned NeMo Speech container**. Host checks inspect files or metadata. The tag keeps the application dependency selection consistent and reduces CUDA/framework mismatch risk without installing the ML stack into the host OS. It supports portability to compatible GPU hosts; driver compatibility, GPU capacity, and mounts still need verification. A tag is less precise than an immutable digest, which has not been recorded here.
+
+Training maps `~/work/nemo-speech-src` to `/nemo-src:ro`, `~/data/nsc` to `/data/nsc:ro`, cached weights to `/root/.cache/huggingface:ro`, and each host experiment directory to writable `/results`. Evaluation maps the project to `/work:ro` for the evaluator/export and uses separate writable results mounts. The commands below define the exact mappings; container paths embedded in manifests must match them. Writable host mounts preserve checkpoints/metrics after `--rm`; a file stored only in the disposable container would be lost.
+
+### Solutions Architect decision framework
+
+| Decision | Customer requirement | Technical justification | Trade-offs | Evidence / success criterion |
+| --- | --- | --- | --- | --- |
+| Use the available L4 | Establish initial feasibility on provisioned compute | Two-step training and export inference have worked on this GPU | Availability supports a POC; throughput, concurrency, memory headroom, and cost are unmeasured | Capture pilot memory/throughput/time and workload constraints before production sizing |
+| Use a pinned NGC container and official training recipe | Make the workflow repeatable across engineers | Shared NeMo/PyTorch runtime and NVIDIA implementation preserve the demonstrated path | Requires compatible host driver, staged source/cache, and persistent storage; exact digest not captured | Reproduce setup and restore/evaluate identified artifacts under recorded configuration |
+| Keep a small fixed dataset and offline WER policy | Compare recognition fidelity consistently | Same 50 records, prompt, normalization, and corpus scoring isolate checkpoint effects | Cheap development signal, but only 793 words; not representative production or streaming evidence | Compare restored artifacts against 10.84%; agree meaningful quality targets and use untouched representative testing |
+| Prepare a 100-step pilot | Decide whether further GPU investment is justified | More optimization and full internal validation before a larger run | Still small-data adaptation; extra evaluation/checkpoint I/O and overfitting risk | Stable optimization, intended validation events, usable export, measured resources, and interpretable offline quality evidence |
+| Separate development, held-out NSC, and GigaSpeech | Avoid selecting a model only because it fits development examples | Freeze choices before in-domain test and external regression checks | More data preparation/evaluation time; corpus distributions do not cover every customer | Demonstrate accepted in-domain quality and acceptable external regressions before recommending rollout |
+
+Customer acceptance thresholds have **not** been agreed. Before production advice, characterize domain terminology, Singapore-English patterns, speaker/recording conditions, streaming latency, real-time factor, throughput/concurrent sessions, and operating cost. Offline WER is useful for transcription fidelity but does not establish these application properties. A numerical improvement on this small development set alone cannot justify a production recommendation.
+
 ## Where this guide fits in the agenda
 
 [Guide 01](01-brev-gpu-node-validation.md#agenda-validate-the-stack-from-gpu-to-application) covers host, container, and framework access. This guide continues at **layer 8: application** with the Nemotron ASR POC. NeMo import and model placement extend the reported layer 7 checks. Pretrained GPU inference, an offline baseline on all 50 NSC validation recordings, and an official two-step GPU training smoke test with saved artifacts are verified. Export restoration, fixed-50 fine-tuned evaluation, and baseline reproduction are now verified from October 10 operator evidence. Longer fine-tuning and held-out evaluation remain pending.
 
 ### Guide sections
 
+Stage 8 now includes the [completed comparison](#export-evaluation-and-baseline-reproduction--complete), [readiness audit](#pre-training-readiness-review--complete), [prepared pilot](#controlled-100-step-pilot--prepared-execution-unconfirmed), and [customer decision lessons](#lessons-learned-for-customer-decisions).
+
 The [hands-on agenda](#hands-on-agenda) links the ten numbered stages below in the same order as the [README](../../README.md#guide-02--adapting-nvidia-nemotron-35-streaming-asr-to-singapore-english). Use [completion boundaries](#completion-boundaries-and-next-step) for individual milestone status, the [helper-script index](../../scripts/guide-02/README.md) for tooling, and [troubleshooting notes](#troubleshooting-notes) for supporting diagnostics. The [optional one-WAV appendix](#appendix-optional-single-file-inference-smoke-test--not-yet-executed) remains a separate, unexecuted alternative.
 
 ## Guide 02 workflow agenda
 
-[Node preflight](#node-preflight--complete), [NeMo/model loading](#nemo-container-and-model-on-gpu--complete), source inspection/separation, annotation auditing, subset generation/validation, [normalization](#transcript-annotation-normalization--complete), and [Nemotron manifest conversion](#nemotron-compatible-manifest-conversion--complete) are complete for the operator-reported checks. Conversion found all 300/50 selected audio files, and one final record per split was inspected. On **October 9, 2026**, the original pretrained model successfully transcribed one recording and then all **50 fixed validation recordings** on the L4. The offline baseline reported **793 reference words and 10.84% WER**. The official two-step training smoke test and checkpoint saving also completed that day. On **October 10, 2026**, stage 8 restored/evaluated the export at **10.97% WER** and reproduced the pretrained **10.84% WER** with the same evaluator. Next: inspect the existing training launcher before a longer experiment. Configuration freeze, NSC test, and external evaluation remain pending.
+[Node preflight](#node-preflight--complete), [NeMo/model loading](#nemo-container-and-model-on-gpu--complete), source inspection/separation, annotation auditing, subset generation/validation, [normalization](#transcript-annotation-normalization--complete), and [Nemotron manifest conversion](#nemotron-compatible-manifest-conversion--complete) are complete for the operator-reported checks. Conversion found all 300/50 selected audio files, and one final record per split was inspected. On **October 9, 2026**, the original pretrained model successfully transcribed one recording and then all **50 fixed validation recordings** on the L4. The offline baseline reported **793 reference words and 10.84% WER**. The official two-step training smoke test and checkpoint saving also completed that day. On **October 10, 2026**, stage 8 restored/evaluated the export at **10.97% WER** and reproduced the pretrained **10.84% WER** with the same evaluator. The subsequent configuration audit and metadata eligibility check are complete: **300/300 duration-eligible records / 0.656 h**. A controlled **100-step pilot is prepared; execution is not yet confirmed**. Next: verify launch prerequisites and capture pilot evidence before considering longer training. Configuration freeze, NSC test, and external evaluation remain pending.
 
 ### Current pipeline status
 
@@ -60,9 +107,14 @@ Restore exported .nemo and run offline inference ✅
         ↓
 Fixed 50-record fine-tuned WER: 10.97% ✅
         ↓
-Pretrained baseline recheck: 10.84% ✅ ← CURRENT CHECKPOINT (2026-10-10)
+Pretrained baseline recheck: 10.84% ✅
         ↓
-Review training launcher / longer-run configuration ← NEXT — PENDING
+Training configuration / duration eligibility audit ✅
+300 eligible recordings / 0.656 h
+        ↓
+100-step pilot configured ← CURRENT CHECKPOINT (2026-10-10)
+        ↓
+Verify readiness and execute pilot ← NEXT — EXECUTION NOT CONFIRMED
         ↓
 Longer fine-tuning / validation development loop — PENDING
         ↓
@@ -90,7 +142,7 @@ Follow the same ten stages as the [README overview](../../README.md#guide-02--ad
 9. [Held-out NSC test](#9-held-out-nsc-test) — freeze model, decoding, and scoring choices before evaluating `nsc_test`.
 10. [External benchmark](#10-external-benchmark) — check `gigaspeech_test` for generalization/regressions after the NSC test, without routine tuning.
 
-**Current position:** Setup, train/validation preparation, pretrained baseline, two-step training/artifacts, export restoration, fixed-50 comparison, and baseline recheck are complete for the reported scope. **Stage 8 continues:** inspect the existing launcher and official configuration before longer training and model selection. Stage 9's configuration freeze/test and stage 10's external evaluation are planned. Test/benchmark data preparation and overlap checks also remain pending.
+**Current position:** Setup, train/validation preparation, pretrained baseline, two-step training/artifacts, export restoration, fixed-50 comparison, and baseline recheck are complete for the reported scope. **Stage 8 continues:** configuration/duration audits are complete and the 100-step pilot is prepared; execution and measured pilot behavior remain unconfirmed before longer training/model selection. Stage 9's configuration freeze/test and stage 10's external evaluation are planned. Test/benchmark data preparation and overlap checks also remain pending.
 
 Perform data preparation in the SSH-connected GPU host's working directory, outside Git. Download there and bind-mount host data into the container; a laptop path is not automatically available on the remote node. Record source locations/versions, scripts/seed, selected IDs, overlap results, cleanup/scoring rules, container/model versions, and run settings. Keep validation IDs fixed; when scoring rules change, rescore both models consistently. Annotation cleanup, manifest preparation, and the baseline scoring/transcription policy are recorded below. Preserve that policy for comparisons; two-step training settings are recorded below, while longer-run choices and the final model/configuration freeze remain pending.
 
@@ -1359,7 +1411,7 @@ model.cuda()
 model.eval()
 ```
 
-Both evaluations use `RNNTPromptTranscribeConfig(use_lhotse=False, batch_size=1, num_workers=0, target_lang="en-US", verbose=False)` and `model.transcribe(audio=audio_paths, override_config=transcribe_cfg)` inside `torch.inference_mode()`. Evaluation restores model weights without resuming training or updating parameters.
+Both evaluations use `RNNTPromptTranscribeConfig(use_lhotse=False, batch_size=1, num_workers=0, target_lang="en-US", verbose=False)` and `model.transcribe(audio=audio_paths, override_config=transcribe_cfg)` inside `torch.inference_mode()`. `from_pretrained()` loads the original NVIDIA model; `restore_from()` loads the local NeMo export. `model.cuda()` moves parameters to the GPU, `model.eval()` selects evaluation behavior, and `torch.inference_mode()` disables autograd tracking to avoid inference overhead. Neither evaluation call resumes training or updates parameters. Identical normalization prevents case, punctuation, and tag differences from masquerading as checkpoint quality changes.
 
 Reference and prediction text use the [baseline normalization policy](#reported-evaluation-implementation-and-scoring-policy): remove language tags, lowercase, normalize curly apostrophes, remove punctuation except apostrophes, and collapse whitespace. **No number or abbreviation normalization is applied.** NeMo computes corpus-level WER with:
 
@@ -1525,34 +1577,169 @@ Transcript-bearing predictions and example transcripts from the supplied output 
 
 If the supplied fine-tuned percentage was rounded normally, the unique integer error count consistent with 10.97% over 793 words is 87. Arithmetic from those counts gives approximately **+0.1261 percentage points**, or **1.16% relative increase** in word errors. These are derived comparisons, not additional full-precision metrics read from the fine-tuned JSON.
 
-The fine-tuned export made one more word-level error on this small development set. Two optimizer steps are insufficient evidence of meaningful Singapore-English adaptation; the result does not establish that fine-tuning generally reduces quality. **The training-to-export-to-restoration-to-evaluation workflow works; this smoke test did not improve transcription accuracy.** It is not a production-ready model, held-out result, or streaming benchmark.
+Under that rounding assumption, the fine-tuned export made one more word-level error on this small development set (approximately **+0.13 percentage points**). No statistical significance was assessed; this is not evidence of a statistically meaningful regression. Two optimizer steps are insufficient evidence of meaningful Singapore-English adaptation; the result does not establish that fine-tuning generally reduces quality. **The training-to-export-to-restoration-to-evaluation workflow works; this smoke test did not improve transcription accuracy.** It is not a production-ready model, held-out result, or streaming benchmark.
 
-The operator's supplied predictions also illustrate that grammatical standardization can introduce substitutions against spoken references. Transcript fidelity and grammatical correctness are different objectives; preserve the spoken reference and consistent scoring rules.
+In supplied recording 4, the fine-tuned output matched the reference word `require` where the pretrained model produced `required`. Other substitutions remained in that utterance, and corpus WER was still slightly higher. This single-word observation is not a substitute for whole-dataset scoring. WER measures agreement with spoken reference text, not grammatical correctness; standardized English can introduce errors against Singapore-English constructions. Full example transcripts/prediction files remain outside Git.
 
 #### Solutions Architect lessons
 
-- **Containerized workloads and GPU access:** the NGC container supplies the NeMo/PyTorch runtime, while the host driver and NVIDIA Container Toolkit expose the L4 through Docker.
-- **Persistent storage and protected inputs:** host mounts preserve artifacts beyond container lifetime; read-only data/project mounts reduce accidental modification during evaluation.
-- **Checkpoint lifecycle:** saving is followed by actual restoration and inference. A `.nemo` export serves model evaluation; training-state recovery from `.ckpt` remains a separate untested capability.
-- **Evaluation and experiment tracking:** fixed data, shared scoring, run names, artifact paths, and separate result directories make checkpoint comparisons reviewable. Rounded baseline agreement has a narrower meaning than exact output equality.
-- **ASR quality:** WER measures reference fidelity; a successful infrastructure workflow does not imply language adaptation or improved accuracy.
+The completed lifecycle demonstrates containerized GPU execution, persistent artifacts, protected inputs, restoration, and consistent ASR evaluation. The [decision framework](#solutions-architect-decision-framework) connects these checks to customer requirements and trade-offs; the [lessons learned](#lessons-learned-for-customer-decisions) incorporate the subsequent readiness audit and pilot rationale.
 
-### Next: review the launcher before longer fine-tuning — planned
+<a id="next-review-the-launcher-before-longer-fine-tuning--planned"></a>
 
-The current host launcher reportedly supports smoke and longer-training modes. **Its current configuration has not yet been inspected in this session.** The repository launcher is reconstructed from earlier command history and does not establish host-side equality.
+### Pre-training readiness review — complete
 
-Proposed inspection, **not yet executed on Brev**:
+**Operator-reported October 10, 2026.** After the fixed-50 comparison, the operator audited the local NVIDIA configuration and training manifest before committing more GPU time. The configuration excerpt and the supplied pilot case are available; the complete current Brev launcher, source checkout, and data remain inaccessible to the maintainer. Repository inspection can compare the supplied case with the repo, but cannot establish full host-file equality.
+
+#### Official configuration audit
+
+Executed on the Brev Ubuntu host:
 
 ```bash
-nl -ba ~/work/nemotron-poc/run_nsc_train.sh | sed -n '1,150p'
+CFG="$HOME/work/nemo-speech-src/examples/asr/conf/fastconformer/cache_aware_streaming/fastconformer_transducer_bpe_streaming_prompt.yaml"
+
+grep -nE '^[[:space:]]*(accumulate_grad_batches|limit_train_batches|check_val_every_n_epoch|monitor|mode|always_save_nemo|save_top_k|max_epochs|max_steps|val_check_interval|min_duration|max_duration|batch_size|use_lhotse):' "$CFG"
 ```
 
-1. Inspect the launcher and official NeMo configuration; verify optimizer/LR, batch size, gradient accumulation, BF16 precision, validation frequency, and checkpoint-selection policy.
-2. Design a longer experiment starting from the original pretrained model; preserve the current smoke-test artifacts. No duration, including the earlier illustrative 600 steps, is finalized or executed.
-3. Run longer training on the L4, restore selected exports, and use the established offline evaluator against the reproduced **10.84%** baseline.
-4. Select the best checkpoint using validation, freeze model/configuration/scoring, then evaluate held-out NSC and GigaSpeech.
+Supplied output from the locally installed NVIDIA YAML:
 
-Longer training, best checkpoint selection, held-out testing, external evaluation, and streaming/performance remain unstarted. Seed **42** and deterministic data sampling remain recorded; hashing/byte-for-byte regeneration is optional stricter production rigor.
+```text
+149:    use_lhotse: true
+156:    max_duration: 39.99
+157:    min_duration: 0.1
+186:    batch_size: 2
+192:    use_lhotse: true
+202:    batch_size: 16
+207:    use_lhotse: true
+351:  max_epochs: -1
+352:  max_steps: 500000
+353:  val_check_interval: 0.5
+358:  accumulate_grad_batches: 1
+369:  limit_train_batches: 1000
+378:    monitor: "val_wer"
+379:    mode: "min"
+380:    save_top_k: 5
+381:    always_save_nemo: True
+```
+
+These are **source defaults**, not the resolved pilot configuration. The existing launcher overrides batch size, maximum steps, validation interval/coverage, and retention. Training uses Lhotse; the separate offline evaluator disables it for transcription.
+
+| Setting | Audited source / launcher relationship | Implication |
+| --- | --- | --- |
+| Gradient accumulation | Source `accumulate_grad_batches=1`; launcher batch size 1 and one GPU | Expected effective batch is one example per optimizer step, subject to actual dataloader behavior and resolved config |
+| Validation interval | Source `0.5`; existing `full` overrides to float `1.0`; pilot overrides to integer `50` | Short experiments need validation before an epoch ends |
+| Validation coverage | Smoke `2` batches; pilot `1.0` | Pilot requests the full validation dataloader; verify actual records/batches in logs |
+| Epoch/step limits | Source `max_epochs=-1`, `max_steps=500000`; pilot overrides steps to `100` | Source's large step limit is not an executed experiment |
+| Training batch cap | Source `limit_train_batches=1000` | Maximum batches per epoch; does not force an epoch to contain 1,000 batches |
+| Checkpoint selection | Source `monitor="val_wer"`, `mode="min"`; launcher `save_top_k=1` | Intends to retain the lowest internal validation WER checkpoint |
+| Export | Source `always_save_nemo=True` | Verify which weights the exported .nemo contains; export is not proven to be the best checkpoint |
+
+A floating validation interval `1.0` schedules checks at epoch end; an integer `50` selects a training-batch interval. Similarly, validation limit `1.0` requests full coverage, while integer `2` limits coverage to two batches. Accumulation counts batches before optimizer updates. See [Lightning Trainer settings](https://lightning.ai/docs/pytorch/stable/common/trainer) and [gradient accumulation](https://lightning.ai/docs/pytorch/stable/common/optimization). Validate the actual events in the pinned runtime; intervals in batches are not inherently optimizer-step intervals.
+
+The source audit explains why the existing full mode could provide no intermediate validation before a short step-limited run ends. The new pilot targets validation near steps 50 and 100 with accumulation one; actual epoch boundaries, dataloader length, sanity checks, and stopping behavior must be confirmed from logs. The audit does not establish completed checkpoint selection or export provenance. Internal `val_wer` still differs from the fixed-50 offline score; compare restored artifacts with the established evaluator.
+
+#### Training-manifest duration assessment
+
+The following **metadata-only Python check ran on the Brev host**. It does not load NeMo or run training/inference; all model execution remains inside the pinned container.
+
+```bash
+python3 - <<'PY'
+import json
+from pathlib import Path
+
+manifest = Path.home() / "data/nsc/poc/nemo/train_300.jsonl"
+
+with manifest.open() as f:
+    samples = [json.loads(line) for line in f if line.strip()]
+
+eligible = [
+    s for s in samples
+    if 0.1 <= float(s["duration"]) <= 39.99
+]
+
+print("Total recordings:", len(samples))
+print("Eligible recordings:", len(eligible))
+print("Excluded by duration:", len(samples) - len(eligible))
+print(
+    "Total eligible audio hours:",
+    round(sum(float(s["duration"]) for s in eligible) / 3600, 3)
+)
+print("Shortest recording:", min(float(s["duration"]) for s in samples))
+print("Longest recording:", max(float(s["duration"]) for s in samples))
+PY
+```
+
+Supplied output:
+
+```text
+Total recordings: 300
+Eligible recordings: 300
+Excluded by duration: 0
+Total eligible audio hours: 0.656
+Shortest recording: 1.43
+Longest recording: 29.72
+```
+
+All 300 records fall within `0.1–39.99` seconds; none are excluded solely by these duration boundaries. The rounded total is **0.656 hours**, approximately **39.4 minutes** and **7.87 seconds per recording**. The latter figures are arithmetic estimates from the rounded total, not independently measured audio properties. This confirms metadata eligibility, not runtime consumption of every example, audio integrity, or sufficient adaptation data.
+
+The earlier subset check established **111 training speakers** and 50 separate validation speakers. Breadth alone does not establish representative speaker, vocabulary, or recording-condition coverage. Around 39 minutes is a small adaptation dataset for this approximately 600-million-parameter model. Overfitting, limited vocabulary coverage, and weak generalization remain risks to assess through training/validation behavior and representative held-out testing. Keep the fixed-50 set for development, and retain NSC held-out plus GigaSpeech evaluation after model selection.
+
+### Controlled 100-step pilot — prepared, execution unconfirmed
+
+The operator supplied the latest host launcher case. The repo previously supported only smoke/full; [run_nsc_train.sh](../../scripts/guide-02/run_nsc_train.sh) now adds the supplied `pilot` case without altering those modes or the shared Docker/Hydra settings:
+
+```bash
+pilot)
+  STEPS=100
+  VAL_INTERVAL=50
+  VAL_BATCHES=1.0
+  LOG_INTERVAL=10
+  ;;
+```
+
+| Pilot setting | Prepared value / source |
+| --- | --- |
+| Initial weights | Original pretrained Nemotron .nemo from the existing cache |
+| Optimizer / LR | AdamW / `1e-5`; existing constant-LR scheduler deletion |
+| GPU / precision | One L4 / `bf16-mixed` |
+| Training data / batch size | 300 duration-eligible records / launcher setting 1 |
+| Gradient accumulation | Inherited `1` from audited YAML; confirm resolved runtime config |
+| Maximum optimizer steps | 100 |
+| Validation data / interval / coverage | Fixed 50 records / every 50 training batches / `1.0` full dataloader |
+| Logging | Every 10 steps |
+| Checkpoint policy | Minimum internal `val_wer`, `save_top_k=1`; verify artifacts/export weights |
+| Output pattern | `results/official_finetune/pilot-100-<UTC timestamp>/` |
+
+A separate mode preserves the working two-step smoke configuration and keeps pilot output separate from historical experiments. It requests more informative validation than smoke and less GPU commitment than an immediate 300- or 600-step experiment. The existing full mode remains unchanged, including its epoch-end validation behavior; review that policy before choosing a longer run.
+
+**Planned host commands; no successful host syntax check or pilot execution output was supplied:**
+
+```bash
+cd ~/work/nemotron-poc
+bash -n run_nsc_train.sh
+bash run_nsc_train.sh pilot
+```
+
+The repository copy passed local `bash -n` and isolated command checks with Docker stubbed out; those checks did not launch a container, train a model, or establish host-file equality. No pilot run identifier, checkpoint, WER, loss, resource measurement, or completion is claimed.
+
+Before launch, confirm the host launcher matches the supplied case, cached pretrained path and pinned source exist, results storage is writable/capacious, and resolved Hydra settings match this table. Preserve existing smoke artifacts. During the pilot, retain training loss, validation event coverage, peak GPU memory, training throughput with units, checkpoint/export events, elapsed time, and available GPU cost evidence. Restore the actual selected artifact and evaluate all fixed-50 records under the unchanged offline policy.
+
+**Decision after the pilot:** proceed to longer training only after confirming stable execution, intended validation, usable exports, and measured resource requirements. Use restored-model offline WER to assess early quality change against **10.84%**, with sensitivity to the small development set. A successful pilot alone is not a production recommendation. Failure, missing validation, unclear export weights, or weak/unstable quality evidence should trigger diagnosis or data/configuration revision before further GPU spending.
+
+Best checkpoint selection, longer-run duration/configuration, longer training, held-out NSC testing, GigaSpeech, and streaming/performance remain pending. Seed **42** and deterministic sampling remain recorded; optional hashes can strengthen artifact identification without changing the tutorial's completion criteria.
+
+### Lessons learned for customer decisions
+
+1. **Training success and accuracy improvement are separate.** Two steps proved feasibility; 10.97% versus 10.84% did not demonstrate better recognition.
+2. **Reproduce evaluation before interpreting a small change.** The shared evaluator/container reproduced baseline WER at the reported precision, increasing confidence in the comparison without proving exact output equality.
+3. **Small development sets are sensitive to individual errors.** The difference is one error over 793 words; no statistically meaningful regression or gain is established.
+4. **Match validation frequency to experiment duration.** The pilot uses a batch interval to seek intermediate evidence; inspect actual events rather than assume epoch-end validation will occur.
+5. **Internal and offline WER are different measurements.** Smoke's two-batch internal score is not interchangeable with the full fixed-50 normalized score.
+6. **Measure data volume and coverage.** 300 records represent about 39 minutes; speaker breadth, terminology, and recording conditions need assessment alongside counts.
+7. **Containers support a repeatable execution environment.** Read-only inputs and persistent writable results separate software, data, and artifacts; retain tags/source versions and capture runtime configuration.
+8. **Verify exports and selected weights.** Restoration/inference was demonstrated for smoke; the export's relationship to the best internal checkpoint remains unverified.
+9. **Each GPU experiment should answer a decision question.** The pilot seeks optimization, validation, memory, throughput, checkpoint, restoration, and early quality evidence before larger expenditure.
+10. **Production recommendations require workload evidence.** L4 feasibility does not prove optimal sizing; customer acceptance requires representative quality, latency, concurrency, cost, and operational evidence.
 
 ## 9. Held-out NSC test
 
@@ -1621,8 +1808,11 @@ The ten numbered stages give the execution order; this table records the individ
 | Export restoration and inference | Complete: operator restored the selected .nemo and transcribed all 50 recordings; .ckpt resume remains untested |
 | Fine-tuned fixed 50-record WER | Complete on October 10: 793 reference words / 10.97% offline WER |
 | Pretrained baseline reproduction | Complete on October 10: same evaluator/settings, 10.84% WER; complete predictions not compared for equality |
-| Longer-training launcher/configuration review | Next; current host launcher inspection not yet performed |
-| Checkpoint-selection metric review | Pending before longer training; training-time WER is not the baseline score |
+| Training configuration audit | Complete from operator YAML output and supplied launcher case; full current host file not byte-compared |
+| Training duration eligibility assessment | Complete: 300 total / 300 eligible / 0 excluded / 0.656 h by manifest metadata |
+| 100-step pilot configuration | Prepared: integer interval 50, full internal validation, logging every 10 steps |
+| 100-step pilot execution | Not yet confirmed; no run output or metrics supplied |
+| Checkpoint-selection policy audit | Complete: internal val_wer/min, launcher save_top_k=1; actual best-checkpoint/export provenance verification pending |
 | Checkpoint/model comparison on validation | Complete for two-step export versus pretrained model: 10.97% versus 10.84%; longer-run model selection pending |
 | Post-training evaluation | Complete for the two-step .nemo export; longer-run evaluation pending |
 | Final model/configuration | Not yet finalized |
@@ -1636,9 +1826,9 @@ The ten numbered stages give the execution order; this table records the individ
 
 ### End-of-day checkpoint
 
-**Current checkpoint (October 10, 2026):** The end-to-end two-step smoke-test workflow is validated: training → checkpoint/export saving → .nemo restoration → offline inference/evaluation. The export from `smoke-2-20261009T092152Z` scored **10.97% WER**; the same evaluator reproduced the pretrained **10.84% WER** on **50 recordings / 793 reference words**. The pipeline works, but this run did not improve transcription accuracy. The exact evaluator source remains outside Git.
+**Current checkpoint (October 10, 2026):** The end-to-end two-step smoke-test workflow is validated: training → checkpoint/export saving → .nemo restoration → offline inference/evaluation. The export from `smoke-2-20261009T092152Z` scored **10.97% WER**; the same evaluator reproduced the pretrained **10.84% WER** on **50 recordings / 793 reference words**. The pipeline works, but this run did not improve transcription accuracy. The exact evaluator source remains outside Git. The subsequent configuration audit and duration eligibility assessment are complete: **300/300 records, 0.656 h**. The **100-step pilot is prepared, execution unconfirmed**.
 
-**Next session — stage 8:** Inspect `~/work/nemotron-poc/run_nsc_train.sh` and review the official configuration before longer training. Verify optimizer/LR, batch size, gradient accumulation, BF16, validation frequency, and checkpoint selection. Preserve smoke artifacts and start the planned longer experiment from the original pretrained model; its duration/settings are not finalized.
+**Next session — stage 8:** Confirm launch prerequisites and the resolved configuration, then execute the pilot from original pretrained weights while preserving smoke artifacts. Capture actual validation events, optimization/resource measurements, checkpoint/export identity, and restored-model offline WER before deciding on a longer experiment. No pilot result or longer-run duration is established.
 
 Later: longer fine-tuning → validation/development loop → freeze checkpoint/configuration/scoring → `nsc_test` → `gigaspeech_test` → streaming latency/performance. These remain pending. The infrastructure progression remains Docker validation → actual Nemotron inference → streaming inference → package the workload → SLURM; streaming and scheduler work remain future milestones.
 

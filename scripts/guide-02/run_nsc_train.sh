@@ -6,18 +6,23 @@
 #
 # Modes:
 #   smoke : 2 optimizer steps
+#   pilot : 100 optimizer steps; prepared, execution not yet confirmed
 #   full  : configurable optimizer steps
 #
 # Usage:
 #   bash run_nsc_train.sh smoke
+#   bash run_nsc_train.sh pilot
 #   bash run_nsc_train.sh full 600
 #
 # Reconstructed from the supplied command history, including both Hydra fixes.
+# Pilot case matches the operator-supplied October 10 host launcher section.
 # Not compared byte-for-byte with the Brev file or independently run on an L4.
 # Original datasets, NVIDIA source, and cached model are mounted read-only.
 
-# Both modes use the same official restoration/training pipeline.
+# All modes use the same official restoration/training pipeline.
 # Smoke limits validation to two batches; full uses a validation fraction of 1.0.
+# Pilot checks every 50 training batches, using the full validation dataloader.
+# Accumulation inherits 1 from the audited source YAML; confirm resolved config.
 # The full 600-step example is illustrative and has not been executed.
 set -euo pipefail
 
@@ -31,6 +36,13 @@ case "$MODE" in
     LOG_INTERVAL=1
     ;;
 
+  pilot)
+    STEPS=100
+    VAL_INTERVAL=50
+    VAL_BATCHES=1.0
+    LOG_INTERVAL=10
+    ;;
+
   full)
     STEPS="${2:?Specify optimizer steps: full <steps>}"
     VAL_INTERVAL=1.0
@@ -39,7 +51,7 @@ case "$MODE" in
     ;;
 
   *)
-    echo "Usage: bash run_nsc_train.sh smoke|full [steps]"
+    echo "Usage: bash run_nsc_train.sh smoke|pilot|full [steps]"
     exit 1
     ;;
 esac
