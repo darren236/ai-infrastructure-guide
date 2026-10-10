@@ -36,16 +36,16 @@ Use the [current progress](PROGRESS.md#current-state) for the latest checkpoint,
 
 Follow these ten stages from node readiness to final evaluation. Each link gives the commands and evidence; training/validation can repeat during development.
 
-1. [Node resources](docs/guides/02-nemotron-streaming-singapore-english.md#node-preflight--complete) — check disk, host RAM, and GPU availability.
-2. [NeMo container](docs/guides/02-nemotron-streaming-singapore-english.md#nemo-container-and-model-on-gpu--complete) — check the pinned Speech container's NeMo version and imports.
-3. [Pretrained model](docs/guides/02-nemotron-streaming-singapore-english.md#nemo-container-and-model-on-gpu--complete) — restore Nemotron with persistent caching and confirm GPU placement.
-4. [Data strategy and source checks](docs/guides/02-nemotron-streaming-singapore-english.md#data-strategy-and-experiment-overview) — define data roles and verify records, split separation, and annotation tags.
-5. [Training and validation inputs](docs/guides/02-nemotron-streaming-singapore-english.md#deterministic-poc-subset-generation--complete) — build deterministic subsets, normalize text, and verify NeMo audio paths and language fields.
-6. [Pretrained inference and baseline](docs/guides/02-nemotron-streaming-singapore-english.md#pretrained-50-utterance-validation-baseline--complete) — verify one transcription, then establish offline WER on fixed validation.
-7. [Training smoke test and artifacts](docs/guides/02-nemotron-streaming-singapore-english.md#official-nemo-fine-tuning--two-step-gpu-smoke-test) — run the official GPU smoke test and verify persistent checkpoint files.
-8. [Checkpoint comparison and development](docs/guides/02-nemotron-streaming-singapore-english.md#next-restore-and-evaluate-the-exported-checkpoint--planned) — restore and compare on fixed validation; iterate longer training and model selection.
-9. [Held-out NSC test](docs/guides/02-nemotron-streaming-singapore-english.md#evaluation-preparation--todo) — freeze model, decoding, and scoring choices before evaluating `nsc_test`.
-10. [External benchmark](docs/guides/02-nemotron-streaming-singapore-english.md#evaluation-preparation--todo) — check `gigaspeech_test` for generalization/regressions after the NSC test, without routine tuning.
+1. [Node resources](docs/guides/02-nemotron-streaming-singapore-english.md#1-node-resources) — check disk, host RAM, and GPU availability.
+2. [NeMo container](docs/guides/02-nemotron-streaming-singapore-english.md#2-nemo-container) — check the pinned Speech container's NeMo version and imports.
+3. [Pretrained model](docs/guides/02-nemotron-streaming-singapore-english.md#3-pretrained-model) — restore Nemotron with persistent caching and confirm GPU placement.
+4. [Data strategy and source checks](docs/guides/02-nemotron-streaming-singapore-english.md#4-data-strategy-and-source-checks) — define data roles and verify records, split separation, and annotation tags.
+5. [Training and validation inputs](docs/guides/02-nemotron-streaming-singapore-english.md#5-training-and-validation-inputs) — build deterministic subsets, normalize text, and verify NeMo audio paths and language fields.
+6. [Pretrained inference and baseline](docs/guides/02-nemotron-streaming-singapore-english.md#6-pretrained-inference-and-baseline) — verify one transcription, then establish offline WER on fixed validation.
+7. [Training smoke test and artifacts](docs/guides/02-nemotron-streaming-singapore-english.md#7-training-smoke-test-and-artifacts) — run the official GPU smoke test and verify persistent checkpoint files.
+8. [Checkpoint comparison and development](docs/guides/02-nemotron-streaming-singapore-english.md#8-checkpoint-comparison-and-development) — restore and compare on fixed validation; iterate longer training and model selection.
+9. [Held-out NSC test](docs/guides/02-nemotron-streaming-singapore-english.md#9-held-out-nsc-test) — freeze model, decoding, and scoring choices before evaluating `nsc_test`.
+10. [External benchmark](docs/guides/02-nemotron-streaming-singapore-english.md#10-external-benchmark) — check `gigaspeech_test` for generalization/regressions after the NSC test, without routine tuning.
 
 **Current position:** Setup, train/validation preparation, pretrained inference/baseline, and two-step training with artifact saving are verified for the reported scope. Baseline: **50 recordings / 10.84% offline WER**. Longer training, checkpoint comparison, held-out evaluation, and streaming/performance remain pending.
 

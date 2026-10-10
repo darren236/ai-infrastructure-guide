@@ -2,7 +2,24 @@
 
 ## Current state
 
-- **Documentation:** [Guide 01](docs/guides/01-brev-gpu-node-validation.md) covers GPU-stack validation; [Guide 02](docs/guides/02-nemotron-streaming-singapore-english.md) records preparation, pretrained inference/baseline, and the official two-step GPU training smoke test with saved checkpoints. The experiment remains train → validation → freeze model/configuration/scoring → NSC test → GigaSpeech; longer training, checkpoint evaluation, and held-out evaluation remain pending.
+### Guide 02 agenda status
+
+Stage numbers match the [README](README.md#guide-02--adapting-nvidia-nemotron-35-streaming-asr-to-singapore-english) and numbered guide sections. Status reflects operator-reported scope; detailed limits and historical evidence follow below.
+
+| Stage | Check | Current status |
+| --- | --- | --- |
+| 1 | [Node resources](docs/guides/02-nemotron-streaming-singapore-english.md#1-node-resources) | Preflight snapshot verified |
+| 2 | [NeMo container](docs/guides/02-nemotron-streaming-singapore-english.md#2-nemo-container) | Version/import checks verified |
+| 3 | [Pretrained model](docs/guides/02-nemotron-streaming-singapore-english.md#3-pretrained-model) | Restoration, persistent cache, and GPU placement verified |
+| 4 | [Data strategy and source checks](docs/guides/02-nemotron-streaming-singapore-english.md#4-data-strategy-and-source-checks) | Train/dev manifest, separation, annotation, and policy checks complete; test/benchmark checks pending |
+| 5 | [Training and validation inputs](docs/guides/02-nemotron-streaming-singapore-english.md#5-training-and-validation-inputs) | 300/50 subsets, normalization, and NeMo conversion complete for reported checks |
+| 6 | [Pretrained inference and baseline](docs/guides/02-nemotron-streaming-singapore-english.md#6-pretrained-inference-and-baseline) | Single-record inference and fixed-50 offline baseline complete: 793 reference words / 10.84% WER |
+| 7 | [Training smoke test and artifacts](docs/guides/02-nemotron-streaming-singapore-english.md#7-training-smoke-test-and-artifacts) | Two optimizer steps and artifact saving complete; no restoration/quality comparison established |
+| 8 | [Checkpoint comparison and development](docs/guides/02-nemotron-streaming-singapore-english.md#8-checkpoint-comparison-and-development) | **Next:** restore/evaluate the export, then longer training/model selection; pending |
+| 9 | [Held-out NSC test](docs/guides/02-nemotron-streaming-singapore-english.md#9-held-out-nsc-test) | Configuration freeze, local test preparation/checks, and evaluation planned |
+| 10 | [External benchmark](docs/guides/02-nemotron-streaming-singapore-english.md#10-external-benchmark) | Local GigaSpeech preparation/evaluation planned after NSC test |
+
+- **Documentation:** [Guide 01](docs/guides/01-brev-gpu-node-validation.md) covers GPU-stack validation; [Guide 02](docs/guides/02-nemotron-streaming-singapore-english.md) records preparation, pretrained inference/baseline, and the official two-step GPU training smoke test with saved checkpoints. Guide 02 follows the README's ten numbered execution stages, with **stage 8 — checkpoint comparison and development** next. Longer training, checkpoint evaluation, and held-out evaluation remain pending.
 - **Guide 02:** Setup, 300/50 POC preparation/checks, single-record GPU inference, and evaluation of all 50 fixed validation recordings are complete from operator-reported Brev results. October 9, 2026 baseline: `EncDecRNNTBPEModelWithPrompt` on `cuda:0`, NVIDIA L4 24 GB, `nvcr.io/nvidia/nemo-speech:26.07.00`, **793 reference words and 10.84% offline dataset-level WER**. The original pretrained checkpoint was used. No independent GPU run/recalculation by the guide maintainer is claimed. Official Lhotse training and optimizer updates subsequently completed two steps, with limited validation and saved artifacts. Checkpoint reload/comparison, longer training, held-out evaluation, true streaming, and performance testing remain pending.
 - **Guide 02 data roles:** `nsc_query_5h` is train and `nsc_dev_3h` is validation (dev), both from the NSC Part 6 train partition. Local checks found 111/64 speakers, zero shared speakers, and zero shared utterance IDs. [Train → validation → freeze model/configuration → NSC test → GigaSpeech](docs/guides/02-nemotron-streaming-singapore-english.md#data-strategy-and-experiment-overview) remains planned execution; test/benchmark preparation and separation from `nsc_test` remain unvalidated.
 - **Guide 02 annotations:** Source audits found three tag types; selection excluded whole `<unk>` utterances. Normalization changed 61 train / 4 validation texts, removing `<v-noise>` 87/7 and `<noise>` 5/0, matching the earlier inventory. Actual words, fillers, case, punctuation, and other metadata remain. An independent tag-inspection rerun failed on a missing runtime helper; no successful suggested `grep` result is reported. Cleanup is not denoising or a final WER policy; manual listening/relabeling remains future work.
@@ -21,7 +38,7 @@
 
 **Pipeline:** [Preparation → pretrained baseline → official two-step training → saved artifacts are complete](docs/guides/02-nemotron-streaming-singapore-english.md#current-pipeline-status). Next: exported checkpoint restoration → fixed-50 fine-tuned WER → longer training/validation → freeze checkpoint/configuration/scoring → NSC test → GigaSpeech → streaming/performance. These later stages remain pending; no test/benchmark downloads are documented.
 
-**Next session:** Restore/evaluate the existing two-step `.nemo` before another training run, using the same fixed validation set, prompt, decoding, normalization, and scoring implementation. Capture the exact host `baseline_eval.py` and add the planned optional `--model-path`; source and modification remain pending. Preserve raw/normalized predictions and baseline evidence.
+**Next session — stage 8:** Restore/evaluate the existing two-step `.nemo` before another training run, using the same fixed validation set, prompt, decoding, normalization, and scoring implementation. Capture the exact host `baseline_eval.py` and add the planned optional `--model-path`; source and modification remain pending. Preserve raw/normalized predictions and baseline evidence.
 
 **Reproducibility scope:** Seed 42 and deterministic speaker-aware sampling are already recorded. SHA-256 hashing/byte-for-byte regeneration is optional additional rigor for stricter production pipelines, deliberately not a required tutorial blocker.
 
@@ -328,6 +345,12 @@ Both steps ran without a GPU request in the same version-tagged NeMo image; no d
 Reviewed the repository navigation and rewrote Guide 02's README outline as ten concise stages: node resources → NeMo container → pretrained model → data strategy/source checks → prepared train/validation inputs → pretrained baseline → training/artifacts → checkpoint comparison/development → frozen NSC test → external benchmark. The guide agenda and directory index now use the same order.
 
 This is a documentation change. Existing commands, source/preparation methods, scripts, results, historical milestones, and completion boundaries are preserved. The next technical check remains restoration/evaluation of the two-step export on fixed validation; longer training, held-out evaluation, and streaming/performance are still pending.
+
+### 2026-10-10 — Repository navigation aligned to Guide 02 stages
+
+Grouped the detailed Guide 02 content under the same ten numbered stages as the README, separating container validation from model restoration and retaining earlier section anchors. Added clearly planned held-out-test and external-benchmark sections without claiming new execution.
+
+Aligned the guide index, Guide 01 application handoff, current progress table, roadmap, and helper-script stage mapping. Stage 8 remains checkpoint restoration/comparison before longer training. Earlier milestones, command/log blocks, dataset policies, and script implementations are preserved; this records documentation organization only.
 
 ## Updating this log
 
