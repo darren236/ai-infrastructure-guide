@@ -2,6 +2,27 @@
 
 ## Current state
 
+### Guide 04 agenda status
+
+Stage numbers match [Guide 04](docs/guides/04-single-node-slurm-learning-lab.md#hands-on-agenda). The environment checkpoint is operator-reported; no scheduled job result is claimed yet.
+
+| Stage | Check | Current status |
+| --- | --- | --- |
+| 1 | Read cluster state | Initial check complete: default `gpu` partition available; one node idle; one L4 registered |
+| 2 | Read the configuration | Active configuration installed; Vim review/learning exercise next |
+| 3 | Submit a CPU batch job | Pending |
+| 4 | Run interactively | Pending |
+| 5 | Submit a GPU job | Pending |
+| 6 | Observe contention | Pending |
+| 7 | Control the lifecycle | Pending |
+| 8 | Schedule the existing workload | Pending |
+
+- **Environment:** Ubuntu 22.04, kernel `6.8.0-1069-gcp`, systemd 249, unified cgroup v2, 4 logical CPUs, 15,990 MiB detected RAM, and one NVIDIA L4 with 23,034 MiB VRAM.
+- **Scheduler checkpoint:** Slurm `26.05.5` was installed from checksum-verified upstream source packaged as Debian packages. MUNGE is active; `slurmctld` and `slurmd` now register the single node as idle in the default `gpu` partition. Slurm advertises 12,288 MiB RAM, a maximum of three CPUs for one job, and `gpu:nvidia_l4:1`.
+- **Installation boundary:** The source-package path was an Ubuntu 22.04/cgroup-v2 compatibility choice for this node, not the normal learning path. The guide recommends an existing managed cluster or supported packages first.
+- **Preservation:** The existing NeMo Speech `26.07.00` image and `/home/ubuntu/work/nemotron-poc/run_nsc_train.sh` remain unchanged. Slurm accounting and scheduler-aware container execution are not configured or validated.
+- **Next:** Review the three active configuration files in Vim, then submit the first small CPU batch job and inspect its queue, output, and final state.
+
 ### Guide 02 agenda status
 
 Stage numbers match the [README](README.md#guide-02--adapting-nvidia-nemotron-35-streaming-asr-to-singapore-english) and numbered guide sections. Status reflects operator-reported scope; detailed limits and historical evidence follow below.
@@ -67,6 +88,16 @@ Stage numbers match the [README](README.md#guide-02--adapting-nvidia-nemotron-35
 ## Milestone history
 
 The dated entries below record status and next steps at each milestone; earlier pending items may have been completed in later entries. Use **Current state** above and the guide completion sections for the latest status. Entry dates record documentation sync unless an execution date is explicitly stated. Historical Part 1–4 names refer to Guide 01's earlier organization; it now follows the eight-layer agenda.
+
+### 2026-10-14 — Guide 04 single-node Slurm environment established
+
+Started [Guide 04](docs/guides/04-single-node-slurm-learning-lab.md) as a workload-use lab rather than an installation tutorial. The existing NVIDIA L4 Brev node runs Ubuntu 22.04, kernel `6.8.0-1069-gcp`, systemd 249, and unified cgroup v2. `slurmd -C` reported 4 logical CPUs, 15,990 MiB memory, and `gpu:nvidia_l4:1`.
+
+Slurm `26.05.5` was downloaded from SchedMD, verified against the published SHA-256, built successfully as upstream Debian packages, and installed with MUNGE and the controller/worker services. This source-package route is recorded as an environment-specific compatibility exception; normal readers should prefer a managed cluster or supported vendor/distribution packages.
+
+The first service restart exposed a concrete packaging prerequisite: the expected `slurm` service account was absent, so `SlurmUser=slurm` was invalid. After creating a locked system account, assigning the controller state directory to it, and restarting `slurmctld` and `slurmd`, `sinfo` showed the one-node default `gpu` partition up with the node idle. The scheduler advertises 12,288 MiB memory, caps an individual job at three CPUs, and registers the L4 as one GPU generic resource.
+
+No Slurm job has been submitted. MariaDB and `slurmdbd` packages are installed, but accounting is not configured or validated. The existing NeMo container and Guide 02 launcher were preserved. The next hands-on step is to review the compact configuration in Vim, then submit a small CPU batch job before moving to interactive work, GPU allocation, contention, lifecycle controls, and the existing Nemotron workload.
 
 ### 2026-10-01 — Initial scaffold
 

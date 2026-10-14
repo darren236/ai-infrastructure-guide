@@ -2,7 +2,7 @@
 
 Practical AI infrastructure guides and a technical portfolio demonstrating NVIDIA Solutions Architect skills: GPU stack validation, containerized workloads, troubleshooting, and clear explanations of architecture and operational tradeoffs.
 
-Start with **Guide 01** to understand and validate the GPU stack, then follow **Guide 02** into a small Nemotron ASR fine-tuning POC. Each guide's agenda is below; open the guide for commands, explanations, observed results, and pending work.
+Start with **Guide 01** to understand and validate the GPU stack, follow **Guide 02** into a small Nemotron ASR fine-tuning POC, and use **Guide 04** to learn workload scheduling on the same single-node GPU environment. Each guide's agenda is below; open the guide for commands, explanations, observed results, and pending work.
 
 Use the [current progress](PROGRESS.md#current-state) for the latest checkpoint, [milestone history](PROGRESS.md#milestone-history) for earlier evidence, [helper-script index](scripts/guide-02/README.md) for repository tooling and host-only evaluation, and [roadmap](ROADMAP.md) for future topics.
 
@@ -51,9 +51,26 @@ Follow these ten stages from node readiness to final evaluation. Each link gives
 
 **Next decision — stage 10 is optional:** The core POC evidence is complete enough to pause. If broader regression evidence is valuable, prepare and run the frozen pretrained/POC v1 comparison on `gigaspeech_test`; do not tune from the held-out NSC result. Before any larger training spend, resolve pilot validation history, Lhotse exposure, loss, resources, and best/last/export provenance. The operator-supplied [evaluator](scripts/guide-02/baseline_eval.py) remains unchanged. See [current progress](PROGRESS.md#guide-02-end-of-day-checkpoint) and [completion boundaries](docs/guides/02-nemotron-streaming-singapore-english.md#completion-boundaries-and-next-step).
 
+### Guide 04 — Single-node Slurm learning lab
+
+[Open Guide 04](docs/guides/04-single-node-slurm-learning-lab.md)
+
+**Goal:** Learn Slurm by using it on the existing NVIDIA L4 node. Read cluster state, understand the small configuration in Vim, submit CPU and GPU work, observe resource contention, inspect logs and job states, and troubleshoot controlled failures.
+
+1. [Read cluster state](docs/guides/04-single-node-slurm-learning-lab.md#hands-on-agenda) — understand partitions, nodes, resources, and state.
+2. [Read the configuration](docs/guides/04-single-node-slurm-learning-lab.md#lab-architecture-and-observed-checkpoint) — inspect the active files in Vim and understand each directive.
+3. Submit a CPU batch job and inspect its output and final state.
+4. Use `srun` for an interactive scheduled task.
+5. Request and verify the single NVIDIA L4 allocation.
+6. Observe why a second GPU job waits while the first holds the only GPU.
+7. Cancel a job, trigger a time limit, and interpret failure and exit states.
+8. Put a small existing Nemotron/NeMo workload behind Slurm without modifying the preserved Guide 02 launcher.
+
+**Current position (October 14, 2026):** Slurm `26.05.5`, MUNGE, the controller, and the worker are operational on the single-node lab. `sinfo` reports one idle node in the default `gpu` partition, and the L4 is registered as `gpu:nvidia_l4:1`. No Slurm job has been submitted yet. The next step is to review the configuration in Vim and submit the first CPU batch job.
+
 ## Future guides
 
-Storage/data access → Slurm → distributed training/NCCL → Kubernetes/GPU Operator → observability → architecture synthesis. These topics are planned in the [roadmap](ROADMAP.md); guide documents are added when work begins.
+Storage/data access → distributed training/NCCL → Kubernetes/GPU Operator → observability → architecture synthesis. These topics are planned in the [roadmap](ROADMAP.md); Guide 04 Slurm work is now active.
 
 ## Repository layout
 
@@ -79,7 +96,8 @@ ai-infrastructure-guide/
     └── guides/
         ├── README.md         # Short directory index
         ├── 01-brev-gpu-node-validation.md
-        └── 02-nemotron-streaming-singapore-english.md
+        ├── 02-nemotron-streaming-singapore-english.md
+        └── 04-single-node-slurm-learning-lab.md
 ```
 
 The [written guides](docs/guides/README.md) contain commands, architecture explanations, and recorded evidence. Runnable assets live under `scripts/guide-NN/`; the [Guide 02 tooling index](scripts/guide-02/README.md) explains six preparation helpers, the one-record GPU inference script, shared offline evaluator, and official-training launcher. The inference script implements the reported workflow; the training launcher is reconstructed from supplied command history, with the October 10 operator-supplied pilot case added. Neither has been compared byte-for-byte with the Brev copy or independently GPU-tested here. Repository scripts and the Brev workspace are separate locations; a commit does not deploy a helper to the node. The [progress log](PROGRESS.md) separates current status from historical milestones; the [roadmap](ROADMAP.md) holds future topics.
