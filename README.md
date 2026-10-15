@@ -55,18 +55,18 @@ Follow these ten stages from node readiness to final evaluation. Each link gives
 
 [Open Guide 04](docs/guides/04-single-node-slurm-learning-lab.md)
 
-**Goal:** Learn Slurm by using it on the existing NVIDIA L4 node. Read cluster state, understand the small configuration in Vim, submit CPU and GPU work, observe resource contention, inspect logs and job states, and troubleshoot controlled failures.
+**Goal:** Learn Slurm by using it on the existing NVIDIA L4 node. Read cluster state, understand the three small configuration files, submit CPU and GPU work, observe resource contention, inspect logs and job states, and troubleshoot controlled failures.
 
-1. [Read cluster state](docs/guides/04-single-node-slurm-learning-lab.md#hands-on-agenda) — understand partitions, nodes, resources, and state.
-2. [Read the configuration](docs/guides/04-single-node-slurm-learning-lab.md#lab-architecture-and-observed-checkpoint) — inspect the active files in Vim and understand each directive.
-3. Submit a CPU batch job and inspect its output and final state.
-4. Use `srun` for an interactive scheduled task.
-5. Request and verify the single NVIDIA L4 allocation.
-6. Observe why a second GPU job waits while the first holds the only GPU.
+1. [Read cluster state](docs/guides/04-single-node-slurm-learning-lab.md#1-read-cluster-state) — understand partitions, nodes, resources, and state.
+2. [Read the configuration](docs/guides/04-single-node-slurm-learning-lab.md#2-read-the-configuration) — understand the roles and change boundaries of the three active configuration files.
+3. [Submit a CPU batch job](docs/guides/04-single-node-slurm-learning-lab.md#3-cpu-batch-job) and inspect its queue state and output.
+4. [Use `srun`](docs/guides/04-single-node-slurm-learning-lab.md#4-interactive-srun) for an interactive scheduled task.
+5. [Request and verify](docs/guides/04-single-node-slurm-learning-lab.md#5-gpu-allocation) the single NVIDIA L4 allocation.
+6. [Observe contention](docs/guides/04-single-node-slurm-learning-lab.md#6-gpu-contention) while one job holds the only GPU and another waits.
 7. Cancel a job, trigger a time limit, and interpret failure and exit states.
 8. Put a small existing Nemotron/NeMo workload behind Slurm without modifying the preserved Guide 02 launcher.
 
-**Current position (October 14, 2026):** Slurm `26.05.5`, MUNGE, the controller, and the worker are operational on the single-node lab. `sinfo` reports one idle node in the default `gpu` partition, and the L4 is registered as `gpu:nvidia_l4:1`. No Slurm job has been submitted yet. The next step is to review the configuration in Vim and submit the first CPU batch job.
+**Current position (October 15, 2026):** Slurm `26.05.5`, MUNGE, the controller, and the worker are operational. CPU batch submission, an interactive CPU shell, explicit allocation of `gpu:nvidia_l4:1`, and two-job GPU contention have been exercised from operator evidence. While one job held the only L4, a second remained pending for `Resources`. The next step is controlled cancellation and timeout behavior, followed by a small existing Nemotron/NeMo workload behind Slurm.
 
 ## Future guides
 

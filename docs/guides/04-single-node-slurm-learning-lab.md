@@ -4,7 +4,7 @@
 
 ## Goal
 
-Learn Slurm by using it: inspect a cluster, submit CPU and GPU work, understand why jobs run or wait, read logs and exit states, and troubleshoot controlled failures. The single-node setup is supporting context, not the main exercise.
+Learn Slurm by using it: inspect a cluster, submit CPU and GPU work, understand why jobs run or wait, read logs and states, and troubleshoot controlled failures. The single-node setup is supporting context, not the main exercise.
 
 This lab reuses the NVIDIA L4 Brev node from Guides 01 and 02. It is intentionally small enough to see the complete path from a submitted job to the GPU on one machine.
 
@@ -12,13 +12,13 @@ This lab reuses the NVIDIA L4 Brev node from Guides 01 and 02. It is intentional
 
 | Stage | Learning outcome | Current status |
 | --- | --- | --- |
-| 1. Read cluster state | Use `sinfo` and `scontrol` to understand partitions, nodes, resources, and state. | Initial `sinfo` check complete |
-| 2. Read the configuration | Use Vim to inspect and edit the three small configuration files, understanding each directive instead of pasting an opaque block. | Next |
-| 3. Submit a CPU batch job | Write an `sbatch` script, request CPU/RAM/time, and inspect output and exit state. | Pending |
-| 4. Run interactively | Use `srun` to obtain an allocation and distinguish login-shell work from scheduled work. | Pending |
-| 5. Submit a GPU job | Request the L4 as a generic resource and verify the allocation from inside the job. | Pending |
-| 6. Observe contention | Hold the only GPU with one job and inspect why a second GPU job remains pending. | Pending |
-| 7. Control the lifecycle | Cancel a job, trigger a time limit, and interpret pending reasons and failure/exit states. | Pending |
+| 1. Read cluster state | Use `sinfo` and `scontrol` to understand partitions, nodes, resources, and state. | Complete |
+| 2. Read the configuration | Understand the distinct roles of `slurm.conf`, `gres.conf`, and `cgroup.conf`. | Complete; no change required |
+| 3. Submit a CPU batch job | Use `sbatch`, follow the printed job ID, inspect the queue, and read the output file. | Complete |
+| 4. Run interactively | Use `srun` to obtain an allocation and distinguish login-shell work from scheduled work. | Complete |
+| 5. Submit a GPU job | Request the L4 as a generic resource and verify its scheduler allocation. | Complete |
+| 6. Observe contention | Hold the only GPU with one job and inspect why a second GPU job remains pending. | Complete |
+| 7. Control the lifecycle | Cancel a job, trigger a time limit, and interpret failure and exit states. | Next |
 | 8. Schedule the existing workload | Move a small Nemotron/NeMo smoke workload behind Slurm without changing the preserved Guide 02 launcher. | Pending |
 
 The agenda starts with state and configuration because those explain later behavior. It does not require building Slurm from source as a normal learning step.
@@ -35,7 +35,7 @@ This lab used the third path as an environment-specific exception. Ubuntu 22.04 
 
 That work establishes the lab; it is not a recommended beginner installation ritual. Package building, dependency resolution, and service-account repair are summarized here so the rest of the guide can focus on using the scheduler.
 
-## Lab architecture and observed checkpoint
+## 1. Read cluster state
 
 | Component | Recorded state |
 | --- | --- |
@@ -53,16 +53,6 @@ That work establishes the lab; it is not a recommended beginner installation rit
 | Accounting | MariaDB and `slurmdbd` packages installed; Slurm accounting is not configured or validated |
 | Container integration | Docker works from earlier guides; scheduler-aware container execution remains a later exercise |
 
-The three deliberately small configuration files are:
-
-- `/etc/slurm/slurm.conf` — cluster identity, controller, node resources, scheduling policy, and partition.
-- `/etc/slurm/gres.conf` — maps the physical L4 device to Slurm's GPU generic resource.
-- `/etc/slurm/cgroup.conf` — asks Slurm to constrain allocated CPU, memory, swap, and devices through cgroup v2.
-
-The next exercise uses Vim to review these files and type any changes. This makes the meaning of the directives visible without turning configuration generation into the subject of the lab.
-
-## Evidence recorded so far
-
 `slurmd -C` reported the host topology and found the L4 through NVIDIA autodetection:
 
 ```text
@@ -70,14 +60,158 @@ CPUs=4 SocketsPerBoard=1 CoresPerSocket=2 ThreadsPerCore=2 RealMemory=15990
 Gres=gpu:nvidia_l4:1
 ```
 
-After the service-account issue was corrected and the controller and worker were restarted, `sinfo` reported one available idle node in the default `gpu` partition:
+After the service-account issue was corrected and the controller and worker were restarted, `sinfo` reported one available idle node in the default `gpu` partition. That established a working control path before job submission began.
 
-```text
-PARTITION AVAIL  TIMELIMIT  NODES  STATE NODELIST
-gpu*         up    2:00:00      1   idle <single-node hostname>
+## 2. Read the configuration
+
+The three compact files answer different questions:
+
+| File | Responsibility | Change it when |
+| --- | --- | --- |
+| `/etc/slurm/slurm.conf` | Defines the cluster, nodes, partitions, advertised CPU/memory/GRES, and scheduling policy. | Nodes, partitions, resource capacity, limits, plugins, or cluster policy change. |
+| `/etc/slurm/gres.conf` | Connects the logical GPU resource to the physical NVIDIA device, normally with NVML autodetection or an explicit device mapping. | GPUs are added, removed, replaced, retyped, remapped, or divided into supported MIG devices. |
+| `/etc/slurm/cgroup.conf` | Defines how Linux cgroups enforce allocated CPU, memory, swap, and device access. | The cgroup version or cluster-wide isolation and memory/device enforcement policy changes. |
+
+Individual workload requirements do not belong in these files. They belong in `#SBATCH` directives or `srun` options. The active files already supported this lab, so no configuration change was required merely to submit the exercises.
+
+## 3. CPU batch job
+
+The first job used an ordinary batch script:
+
+```bash
+#!/bin/bash
+#SBATCH --job-name=cpu-hello
+#SBATCH --partition=gpu
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=2
+#SBATCH --mem=1G
+#SBATCH --time=00:02:00
+#SBATCH --output=%x-%j.out
+
+set -euo pipefail
+
+echo "job_id=$SLURM_JOB_ID"
+echo "job_name=$SLURM_JOB_NAME"
+echo "hostname=$(hostname)"
+echo "cpus_per_task=$SLURM_CPUS_PER_TASK"
+echo "available_cpus=$(nproc)"
+echo "allowed_cpu_ids=$(awk '/Cpus_allowed_list/ {print $2}' /proc/self/status)"
+echo "started=$(date --iso-8601=seconds)"
+sleep 30
+echo "finished=$(date --iso-8601=seconds)"
 ```
 
-This establishes that the controller can read the configuration, the worker has registered, and the partition can accept work. It does not yet establish successful CPU scheduling, GPU isolation, accounting, container execution under Slurm, or workload completion. No Slurm job has been submitted at this checkpoint.
+The normal user workflow was deliberately kept simple:
+
+```bash
+sbatch cpu-hello.sbatch
+squeue -j <job-id>
+cat cpu-hello-<job-id>.out
+```
+
+`sbatch` printed the job ID and returned immediately. While the job was active, `squeue` showed it running on the node. The output file reached the final timestamp after 30 seconds and reported two available CPUs. A later `squeue --me` was empty because `squeue` shows active work and the job had completed.
+
+The CPU job ran in the `gpu` partition without allocating the GPU. A partition selects eligible nodes; a GPU must still be requested explicitly. Persistent completed-job state and exit-code history are not claimed because accounting is not configured and the controller purged the short-lived record.
+
+## 4. Interactive `srun`
+
+The interactive exercise requested a shell instead of submitting a script:
+
+```bash
+srun \
+  --job-name=interactive-cpu \
+  --partition=gpu \
+  --nodes=1 \
+  --ntasks=1 \
+  --cpus-per-task=1 \
+  --mem=512M \
+  --time=00:05:00 \
+  --pty bash
+```
+
+The prompt looked unchanged because the login and compute roles are on the same host. Inside the new shell, the direct context check was:
+
+```bash
+echo $SLURM_JOB_ID
+squeue -j $SLURM_JOB_ID
+```
+
+`SLURM_JOB_ID` was unset in the original SSH shell and set in the scheduled shell; `squeue` reported the interactive job running. `exit` ended the shell and released its allocation.
+
+One requested CPU exposed two Linux CPU IDs in this lab. Slurm allocates at core granularity here, and each physical core has two hardware threads. That observation is topology and policy dependent, not a universal meaning of `--cpus-per-task=1`.
+
+Use interactive `srun` for short inspection and troubleshooting. Use `sbatch` for repeatable work that should continue without an attached terminal.
+
+## 5. GPU allocation
+
+The GPU exercise added one explicit resource request:
+
+```bash
+srun \
+  --job-name=gpu-check \
+  --partition=gpu \
+  --nodes=1 \
+  --ntasks=1 \
+  --cpus-per-task=1 \
+  --mem=1G \
+  --gres=gpu:nvidia_l4:1 \
+  --time=00:05:00 \
+  --pty bash
+```
+
+Inside the interactive shell, `SLURMD_NODENAME` identified the node executing the current task. This avoids querying or assuming a fixed node name when other nodes exist. One scheduler-side command verified the allocation:
+
+```bash
+scontrol show node -d "$SLURMD_NODENAME"
+```
+
+The relevant observed field was:
+
+```text
+GresUsed=gpu:nvidia_l4:1(IDX:0)
+```
+
+This establishes that Slurm allocated the configured L4, device index `0`, to the job. Repeating `SLURM_JOB_GPUS`, `CUDA_VISIBLE_DEVICES`, `nvidia-smi -L`, and several node views is unnecessary for the same scheduling claim. `nvidia-smi` or an application-level CUDA test answers a different question: whether the device is visible, utilized, or functional for a workload. Those lower-layer checks were already performed in earlier guides.
+
+## 6. GPU contention
+
+The interactive GPU job remained open to hold the only L4. From a second ordinary SSH shell, a batch job requested the same resource:
+
+```bash
+#!/bin/bash
+#SBATCH --job-name=gpu-wait
+#SBATCH --partition=gpu
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=1
+#SBATCH --mem=512M
+#SBATCH --gres=gpu:nvidia_l4:1
+#SBATCH --time=00:02:00
+#SBATCH --output=%x-%j.out
+
+echo "job_id=$SLURM_JOB_ID"
+echo "started=$(date --iso-8601=seconds)"
+sleep 10
+echo "finished=$(date --iso-8601=seconds)"
+```
+
+The job was submitted normally:
+
+```bash
+sbatch gpu-wait.sbatch
+squeue --me
+```
+
+The observed queue state was:
+
+```text
+JOBID PARTITION NAME      USER    ST TIME NODES NODELIST(REASON)
+12    gpu       gpu-wait  ubuntu  PD 0:00 1     (Resources)
+11    gpu       gpu-chec  ubuntu  R  1:47 1     <node>
+```
+
+Job `11` held the only configured L4. Job `12` requested the same GPU and remained pending with reason `Resources`. That queue state is sufficient evidence that Slurm prevented the second job from receiving the already allocated GPU; no repeated device inspection is required.
 
 ## Troubleshooting lessons from setup
 
@@ -98,26 +232,26 @@ The useful diagnostic chain was short:
 
 Repeated status commands would not have added evidence after the node reached `idle`.
 
-## Command vocabulary for the workload exercises
+## Command vocabulary
 
 | Command | Plain meaning |
 | --- | --- |
 | `sinfo` | Summarize partitions and node state. |
-| `scontrol show node` | Show the resources and detailed state Slurm knows for a node. |
+| `scontrol show node -d "$SLURMD_NODENAME"` | From an interactive job, show configured and allocated resources on the task's current node, including detailed GRES use. |
 | `sbatch job.sh` | Submit a script and return immediately with a job ID. |
 | `squeue` | Show queued and running jobs, including pending reasons. |
 | `srun ...` | Start a scheduled task, either inside an allocation or by requesting one. |
 | `sacct -j <job-id>` | Show completed job state, elapsed time, and exit code once accounting is available. |
 | `scancel <job-id>` | Cancel a pending or running job. |
 
-Flags will be introduced only when an exercise needs them. Each command in this guide will explain what it does and what its flags mean.
-
 ## Boundaries
 
 This is a functional single-node learning lab, not a production cluster design. It does not validate high availability, shared storage, multi-node networking, multi-user isolation, identity integration, fair-share policy, reservations, backfill behavior under sustained load, operational monitoring, or disaster recovery. The controller and worker share one failure domain, and local data and the root filesystem are on the same underlying volume.
 
-The existing Nemotron launcher remains unchanged. Moving that workload behind Slurm will happen only after small CPU and GPU jobs make allocation behavior understandable.
+The CPU batch, interactive allocation, GPU allocation, and observed two-job contention are operator-reported. GPU allocation is not GPU utilization, and the contention result covers only the configured single-GPU case. Persistent accounting, scheduler-aware container execution, and an application workload remain unvalidated.
+
+The existing Nemotron launcher remains unchanged. Moving that workload behind Slurm will happen only after small jobs make allocation and lifecycle behavior understandable.
 
 ## Next step
 
-Open the installed configuration in Vim, review the active values against the architecture table, and then write the first small CPU batch script. The first workload milestone is complete only when `sbatch`, `squeue`, the output file, and the final state tell one consistent story.
+Run controlled lifecycle exercises: cancel a pending or running job, then submit a deliberately short time-limited job and distinguish `CANCELLED` from `TIMEOUT`. Because persistent accounting is not configured, choose the minimum live-state and output/log evidence needed before moving the existing Nemotron workload behind Slurm.

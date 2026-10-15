@@ -4,24 +4,26 @@
 
 ### Guide 04 agenda status
 
-Stage numbers match [Guide 04](docs/guides/04-single-node-slurm-learning-lab.md#hands-on-agenda). The environment checkpoint is operator-reported; no scheduled job result is claimed yet.
+Stage numbers match [Guide 04](docs/guides/04-single-node-slurm-learning-lab.md#hands-on-agenda). Results are operator-reported from the single-node Brev lab.
 
 | Stage | Check | Current status |
 | --- | --- | --- |
-| 1 | Read cluster state | Initial check complete: default `gpu` partition available; one node idle; one L4 registered |
-| 2 | Read the configuration | Active configuration installed; Vim review/learning exercise next |
-| 3 | Submit a CPU batch job | Pending |
-| 4 | Run interactively | Pending |
-| 5 | Submit a GPU job | Pending |
-| 6 | Observe contention | Pending |
-| 7 | Control the lifecycle | Pending |
+| 1 | Read cluster state | Complete: default `gpu` partition available; one node and one L4 registered |
+| 2 | Read the configuration | Complete: roles and change boundaries for `slurm.conf`, `gres.conf`, and `cgroup.conf` reviewed; no change required |
+| 3 | Submit a CPU batch job | Complete: normal `sbatch` submission, active queue state, and completed output observed |
+| 4 | Run interactively | Complete: scheduled Bash shell identified through `SLURM_JOB_ID` and released with `exit` |
+| 5 | Submit a GPU job | Complete: one L4 requested; detailed current-node state reported `GresUsed=gpu:nvidia_l4:1(IDX:0)` |
+| 6 | Observe contention | Complete: second GPU job remained `PD` with reason `Resources` while the first held the L4 |
+| 7 | Control the lifecycle | Next: distinguish cancellation from time-limit termination |
 | 8 | Schedule the existing workload | Pending |
 
 - **Environment:** Ubuntu 22.04, kernel `6.8.0-1069-gcp`, systemd 249, unified cgroup v2, 4 logical CPUs, 15,990 MiB detected RAM, and one NVIDIA L4 with 23,034 MiB VRAM.
-- **Scheduler checkpoint:** Slurm `26.05.5` was installed from checksum-verified upstream source packaged as Debian packages. MUNGE is active; `slurmctld` and `slurmd` now register the single node as idle in the default `gpu` partition. Slurm advertises 12,288 MiB RAM, a maximum of three CPUs for one job, and `gpu:nvidia_l4:1`.
+- **Scheduler checkpoint:** Slurm `26.05.5`, MUNGE, `slurmctld`, and `slurmd` are operational. Slurm advertises 12,288 MiB RAM, a maximum of three CPUs for one job, and `gpu:nvidia_l4:1`. CPU batch, interactive CPU, interactive GPU, and GPU-contention behavior have been exercised.
+- **Observed workload behavior:** A CPU-only batch job ran without reserving the L4. An interactive shell received a Slurm job context. An interactive GPU request produced `GresUsed=gpu:nvidia_l4:1(IDX:0)` on its executing node. While that job ran, a second one-L4 request remained pending for `Resources`.
+- **Operational lesson:** Inside an interactive GPU shell, `scontrol show node -d "$SLURMD_NODENAME"` is the single scheduler-side allocation check. It targets the task's actual node and avoids redundant device/environment checks when the question is allocation rather than utilization.
 - **Installation boundary:** The source-package path was an Ubuntu 22.04/cgroup-v2 compatibility choice for this node, not the normal learning path. The guide recommends an existing managed cluster or supported packages first.
 - **Preservation:** The existing NeMo Speech `26.07.00` image and `/home/ubuntu/work/nemotron-poc/run_nsc_train.sh` remain unchanged. Slurm accounting and scheduler-aware container execution are not configured or validated.
-- **Next:** Review the three active configuration files in Vim, then submit the first small CPU batch job and inspect its queue, output, and final state.
+- **Next:** Use controlled jobs to distinguish `CANCELLED` from `TIMEOUT`, then place a small existing Nemotron/NeMo workload behind Slurm without changing the preserved Guide 02 launcher.
 
 ### Guide 02 agenda status
 
@@ -88,6 +90,20 @@ Stage numbers match the [README](README.md#guide-02--adapting-nvidia-nemotron-35
 ## Milestone history
 
 The dated entries below record status and next steps at each milestone; earlier pending items may have been completed in later entries. Use **Current state** above and the guide completion sections for the latest status. Entry dates record documentation sync unless an execution date is explicitly stated. Historical Part 1–4 names refer to Guide 01's earlier organization; it now follows the eight-layer agenda.
+
+### 2026-10-15 — Guide 04 CPU, interactive, GPU, and contention exercises completed
+
+**CPU batch:** The operator submitted `cpu-hello.sbatch` through the normal `sbatch` interface, used the printed job ID with `squeue`, and read the job-specific output file. The script reached its final timestamp after 30 seconds and reported its two-CPU allocation. The CPU-only job used the `gpu` partition without requesting the GPU, demonstrating that partition selection and GPU allocation are separate decisions.
+
+**Interactive execution:** An `srun --pty bash` request created a scheduled shell. `SLURM_JOB_ID` was unset in the original SSH shell and populated inside the interactive allocation; `squeue` reported the job running. The otherwise identical prompt reflected the single-node controller/compute design. Exiting the shell released the allocation. One requested CPU exposed both hardware threads of one core under this lab's core-granularity policy.
+
+**GPU allocation:** A second interactive request added `--gres=gpu:nvidia_l4:1`. From inside that shell, the minimum scheduler-side check `scontrol show node -d "$SLURMD_NODENAME"` reported `GresUsed=gpu:nvidia_l4:1(IDX:0)`. This establishes allocation of the configured L4 on the task's actual node. It does not measure utilization or replace an application-level CUDA test when workload function is the question.
+
+**Contention:** While interactive GPU job `11` held the single L4, batch job `12` requested the same resource. `squeue --me` reported job `11` running and job `12` pending with reason `Resources`. This is sufficient evidence that Slurm prevented the second job from receiving the already allocated GPU in the observed single-node case.
+
+**Evidence boundary:** Results are operator-reported. Persistent accounting is not configured, so completed-job history and final exit states are not claimed from `sacct`. Raw terminal logs and ephemeral node identity remain outside Git. The guide records only the commands, sanitized queue evidence, interpretations, and limits needed for the learning sequence.
+
+**Next:** Use controlled jobs to distinguish cancellation from timeout, then move a small existing Nemotron/NeMo workload behind Slurm without modifying the preserved Guide 02 launcher.
 
 ### 2026-10-14 — Guide 04 single-node Slurm environment established
 
