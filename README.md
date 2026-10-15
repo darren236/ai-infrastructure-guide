@@ -63,14 +63,14 @@ Follow these ten stages from node readiness to final evaluation. Each link gives
 4. [Use `srun`](docs/guides/04-single-node-slurm-learning-lab.md#4-interactive-srun) for an interactive scheduled task.
 5. [Request and verify](docs/guides/04-single-node-slurm-learning-lab.md#5-gpu-allocation) the single NVIDIA L4 allocation.
 6. [Observe contention](docs/guides/04-single-node-slurm-learning-lab.md#6-gpu-contention) while one job holds the only GPU and another waits.
-7. Cancel a job, trigger a time limit, and interpret failure and exit states.
-8. Put a small existing Nemotron/NeMo workload behind Slurm without modifying the preserved Guide 02 launcher.
+7. [Control the lifecycle](docs/guides/04-single-node-slurm-learning-lab.md#7-lifecycle-control--deferred) with cancellation and timeout exercises; currently deferred.
+8. [Run an existing Nemotron workload](docs/guides/04-single-node-slurm-learning-lab.md#8-scheduled-nemotron-workload) behind Slurm without modifying the existing inference helper; complete.
 
-**Current position (October 15, 2026):** Slurm `26.05.5`, MUNGE, the controller, and the worker are operational. CPU batch submission, an interactive CPU shell, explicit allocation of `gpu:nvidia_l4:1`, and two-job GPU contention have been exercised from operator evidence. While one job held the only L4, a second remained pending for `Resources`. The next step is controlled cancellation and timeout behavior, followed by a small existing Nemotron/NeMo workload behind Slurm.
+**Current position (October 15, 2026):** Slurm `26.05.5`, MUNGE, the controller, and the worker are operational. CPU batch submission, an interactive CPU shell, explicit allocation of `gpu:nvidia_l4:1`, two-job GPU contention, and a scheduled one-record Nemotron inference have been exercised from operator evidence. The functional path from `sbatch` through Docker, NeMo, and L4 inference is complete for this single-node lab. Cancellation/timeout, persistent accounting, and multi-GPU-aware container integration are deferred follow-up work.
 
 ## Future guides
 
-Storage/data access → distributed training/NCCL → Kubernetes/GPU Operator → observability → architecture synthesis. These topics are planned in the [roadmap](ROADMAP.md); Guide 04 Slurm work is now active.
+Storage/data access → distributed training/NCCL → Kubernetes/GPU Operator → observability → architecture synthesis. These topics are planned in the [roadmap](ROADMAP.md); Guide 04 has reached its functional single-node workload checkpoint.
 
 ## Repository layout
 

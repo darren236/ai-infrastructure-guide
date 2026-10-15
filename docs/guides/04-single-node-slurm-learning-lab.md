@@ -18,8 +18,8 @@ This lab reuses the NVIDIA L4 Brev node from Guides 01 and 02. It is intentional
 | 4. Run interactively | Use `srun` to obtain an allocation and distinguish login-shell work from scheduled work. | Complete |
 | 5. Submit a GPU job | Request the L4 as a generic resource and verify its scheduler allocation. | Complete |
 | 6. Observe contention | Hold the only GPU with one job and inspect why a second GPU job remains pending. | Complete |
-| 7. Control the lifecycle | Cancel a job, trigger a time limit, and interpret failure and exit states. | Next |
-| 8. Schedule the existing workload | Move a small Nemotron/NeMo smoke workload behind Slurm without changing the preserved Guide 02 launcher. | Pending |
+| 7. Control the lifecycle | Cancel a job, trigger a time limit, and interpret failure and exit states. | Deferred |
+| 8. Schedule the existing workload | Move a small Nemotron/NeMo smoke workload behind Slurm without modifying the existing Guide 02 helper. | Complete |
 
 The agenda starts with state and configuration because those explain later behavior. It does not require building Slurm from source as a normal learning step.
 
@@ -213,6 +213,47 @@ JOBID PARTITION NAME      USER    ST TIME NODES NODELIST(REASON)
 
 Job `11` held the only configured L4. Job `12` requested the same GPU and remained pending with reason `Resources`. That queue state is sufficient evidence that Slurm prevented the second job from receiving the already allocated GPU; no repeated device inspection is required.
 
+## 7. Lifecycle control — deferred
+
+Cancellation and deliberate timeout exercises were not executed. They remain useful for learning `scancel`, `CANCELLED`, and `TIMEOUT`, but are not required to establish the functional path from submission through a scheduled GPU application. Persistent accounting is also unconfigured, so no completed-job history is claimed from `sacct`.
+
+## 8. Scheduled Nemotron workload
+
+The final exercise scheduled the already validated one-record Nemotron inference path rather than repeating training and creating another large checkpoint set. The Slurm wrapper requested the resources; the existing Guide 02 helper, data, and cache remained unchanged:
+
+```bash
+#!/bin/bash
+#SBATCH --job-name=nemotron-smoke
+#SBATCH --partition=gpu
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=2
+#SBATCH --mem=8G
+#SBATCH --gres=gpu:nvidia_l4:1
+#SBATCH --time=00:30:00
+#SBATCH --output=%x-%j.out
+
+set -euo pipefail
+
+echo "job_id=$SLURM_JOB_ID"
+echo "node=$SLURMD_NODENAME"
+echo "started=$(date --iso-8601=seconds)"
+
+docker run --rm --gpus all \
+  -v "$HOME/hf-cache:/root/.cache/huggingface" \
+  -v "$HOME/data/nsc:/data/nsc:ro" \
+  -v "$HOME/work/nemotron-poc:/work:ro" \
+  nvcr.io/nvidia/nemo-speech:26.07.00 \
+  python /work/baseline_smoke.py \
+    /data/nsc/poc/nemo/dev_50.jsonl
+
+echo "finished=$(date --iso-8601=seconds)"
+```
+
+The operator submitted the wrapper with ordinary `sbatch`. The job reached the existing helper's `Smoke test completed.` message and the wrapper's final timestamp at `2026-10-15T08:58:36+00:00`. This connects the scheduler allocation to Docker, NeMo, model restoration, and one L4 transcription without changing the inference helper or input data.
+
+This is a functional single-node integration result. Rootful Docker still uses `--gpus all`; on this one-GPU host that reaches the allocated L4, but it does not establish scheduler-aware container GPU binding on a multi-GPU cluster. No additional training, accuracy, latency, throughput, or production-readiness claim is made.
+
 ## Troubleshooting lessons from setup
 
 ### Do not diagnose a cluster before it has a configuration
@@ -248,10 +289,10 @@ Repeated status commands would not have added evidence after the node reached `i
 
 This is a functional single-node learning lab, not a production cluster design. It does not validate high availability, shared storage, multi-node networking, multi-user isolation, identity integration, fair-share policy, reservations, backfill behavior under sustained load, operational monitoring, or disaster recovery. The controller and worker share one failure domain, and local data and the root filesystem are on the same underlying volume.
 
-The CPU batch, interactive allocation, GPU allocation, and observed two-job contention are operator-reported. GPU allocation is not GPU utilization, and the contention result covers only the configured single-GPU case. Persistent accounting, scheduler-aware container execution, and an application workload remain unvalidated.
+The CPU batch, interactive allocation, GPU allocation, observed two-job contention, and scheduled Nemotron inference are operator-reported. GPU allocation is not GPU utilization, and the contention result covers only the configured single-GPU case. Persistent accounting, cancellation/timeout behavior, scheduler-aware container GPU binding, and production workload behavior remain unvalidated.
 
-The existing Nemotron launcher remains unchanged. Moving that workload behind Slurm will happen only after small jobs make allocation and lifecycle behavior understandable.
+The existing Nemotron inference helper and training launcher remain unchanged. The scheduled smoke job reused the existing one-record inference path and did not run a new training experiment.
 
 ## Next step
 
-Run controlled lifecycle exercises: cancel a pending or running job, then submit a deliberately short time-limited job and distinguish `CANCELLED` from `TIMEOUT`. Because persistent accounting is not configured, choose the minimum live-state and output/log evidence needed before moving the existing Nemotron workload behind Slurm.
+The core learning milestone can pause here: cluster state, configuration roles, batch and interactive work, explicit GPU allocation, contention, and one scheduled Nemotron inference are documented. Cancellation, timeout, persistent accounting, and multi-GPU-aware container integration remain optional follow-up work if deeper Slurm operations are the next priority.

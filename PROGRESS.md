@@ -14,16 +14,17 @@ Stage numbers match [Guide 04](docs/guides/04-single-node-slurm-learning-lab.md#
 | 4 | Run interactively | Complete: scheduled Bash shell identified through `SLURM_JOB_ID` and released with `exit` |
 | 5 | Submit a GPU job | Complete: one L4 requested; detailed current-node state reported `GresUsed=gpu:nvidia_l4:1(IDX:0)` |
 | 6 | Observe contention | Complete: second GPU job remained `PD` with reason `Resources` while the first held the L4 |
-| 7 | Control the lifecycle | Next: distinguish cancellation from time-limit termination |
-| 8 | Schedule the existing workload | Pending |
+| 7 | Control the lifecycle | Deferred: cancellation and timeout exercises not run |
+| 8 | Schedule the existing workload | Complete: Slurm batch wrapper ran the existing one-record Nemotron inference path through Docker/NeMo on the L4 |
 
 - **Environment:** Ubuntu 22.04, kernel `6.8.0-1069-gcp`, systemd 249, unified cgroup v2, 4 logical CPUs, 15,990 MiB detected RAM, and one NVIDIA L4 with 23,034 MiB VRAM.
-- **Scheduler checkpoint:** Slurm `26.05.5`, MUNGE, `slurmctld`, and `slurmd` are operational. Slurm advertises 12,288 MiB RAM, a maximum of three CPUs for one job, and `gpu:nvidia_l4:1`. CPU batch, interactive CPU, interactive GPU, and GPU-contention behavior have been exercised.
+- **Scheduler checkpoint:** Slurm `26.05.5`, MUNGE, `slurmctld`, and `slurmd` are operational. Slurm advertises 12,288 MiB RAM, a maximum of three CPUs for one job, and `gpu:nvidia_l4:1`. CPU batch, interactive CPU, interactive GPU, GPU contention, and scheduled Nemotron inference have been exercised.
 - **Observed workload behavior:** A CPU-only batch job ran without reserving the L4. An interactive shell received a Slurm job context. An interactive GPU request produced `GresUsed=gpu:nvidia_l4:1(IDX:0)` on its executing node. While that job ran, a second one-L4 request remained pending for `Resources`.
 - **Operational lesson:** Inside an interactive GPU shell, `scontrol show node -d "$SLURMD_NODENAME"` is the single scheduler-side allocation check. It targets the task's actual node and avoids redundant device/environment checks when the question is allocation rather than utilization.
 - **Installation boundary:** The source-package path was an Ubuntu 22.04/cgroup-v2 compatibility choice for this node, not the normal learning path. The guide recommends an existing managed cluster or supported packages first.
-- **Preservation:** The existing NeMo Speech `26.07.00` image and `/home/ubuntu/work/nemotron-poc/run_nsc_train.sh` remain unchanged. Slurm accounting and scheduler-aware container execution are not configured or validated.
-- **Next:** Use controlled jobs to distinguish `CANCELLED` from `TIMEOUT`, then place a small existing Nemotron/NeMo workload behind Slurm without changing the preserved Guide 02 launcher.
+- **Application checkpoint:** A Slurm batch wrapper requested two CPUs, 8 GiB memory, one L4, and 30 minutes, then reused the existing NeMo Speech `26.07.00` one-record inference helper. It reached `Smoke test completed.` and the wrapper's final timestamp at `2026-10-15T08:58:36+00:00`.
+- **Preservation and boundaries:** The existing inference helper, NeMo container, data, cache, and `/home/ubuntu/work/nemotron-poc/run_nsc_train.sh` remain unchanged. Rootful Docker still uses `--gpus all`; this is a functional one-GPU result, not proof of multi-GPU-aware container binding. Slurm accounting and cancellation/timeout behavior remain unvalidated.
+- **Next:** Guide 04 can pause. Choose the next roadmap milestone, or return later for cancellation/timeout, accounting, and multi-GPU-aware container integration.
 
 ### Guide 02 agenda status
 
@@ -91,7 +92,7 @@ Stage numbers match the [README](README.md#guide-02--adapting-nvidia-nemotron-35
 
 The dated entries below record status and next steps at each milestone; earlier pending items may have been completed in later entries. Use **Current state** above and the guide completion sections for the latest status. Entry dates record documentation sync unless an execution date is explicitly stated. Historical Part 1–4 names refer to Guide 01's earlier organization; it now follows the eight-layer agenda.
 
-### 2026-10-15 — Guide 04 CPU, interactive, GPU, and contention exercises completed
+### 2026-10-15 — Guide 04 workload path completed through scheduled Nemotron inference
 
 **CPU batch:** The operator submitted `cpu-hello.sbatch` through the normal `sbatch` interface, used the printed job ID with `squeue`, and read the job-specific output file. The script reached its final timestamp after 30 seconds and reported its two-CPU allocation. The CPU-only job used the `gpu` partition without requesting the GPU, demonstrating that partition selection and GPU allocation are separate decisions.
 
@@ -101,9 +102,11 @@ The dated entries below record status and next steps at each milestone; earlier 
 
 **Contention:** While interactive GPU job `11` held the single L4, batch job `12` requested the same resource. `squeue --me` reported job `11` running and job `12` pending with reason `Resources`. This is sufficient evidence that Slurm prevented the second job from receiving the already allocated GPU in the observed single-node case.
 
-**Evidence boundary:** Results are operator-reported. Persistent accounting is not configured, so completed-job history and final exit states are not claimed from `sacct`. Raw terminal logs and ephemeral node identity remain outside Git. The guide records only the commands, sanitized queue evidence, interpretations, and limits needed for the learning sequence.
+**Scheduled application:** A new Slurm batch wrapper requested two CPUs, 8 GiB memory, one `gpu:nvidia_l4`, and a 30-minute limit, then ran the existing one-record Guide 02 inference helper inside NeMo Speech `26.07.00`. The cache, NSC data, and helper workspace used the existing mounts; data and helper inputs remained read-only. The operator reported the expected Nemotron result followed by `Smoke test completed.` and the wrapper's final timestamp at `2026-10-15T08:58:36+00:00`. No training or new model artifacts were produced.
 
-**Next:** Use controlled jobs to distinguish cancellation from timeout, then move a small existing Nemotron/NeMo workload behind Slurm without modifying the preserved Guide 02 launcher.
+**Evidence boundary:** Results are operator-reported. Persistent accounting is not configured, so completed-job history and final exit states are not claimed from `sacct`. Rootful Docker uses `--gpus all`; the scheduled application result validates the functional one-GPU path, not scheduler-aware container binding on a multi-GPU cluster. Raw terminal logs, transcript text, and ephemeral node identity remain outside Git.
+
+**Next:** Guide 04 can pause. Cancellation/timeout, persistent accounting, and multi-GPU-aware container integration are deferred follow-up work rather than completed claims.
 
 ### 2026-10-14 — Guide 04 single-node Slurm environment established
 

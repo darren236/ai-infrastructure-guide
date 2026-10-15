@@ -2,12 +2,12 @@
 
 The [repository README](README.md#guides-and-agendas) gives the agendas for the active guides: GPU Node Validation, the Nemotron ASR POC, and the single-node Slurm learning lab. See [progress](PROGRESS.md) for recorded results.
 
-This roadmap covers the broader sequence. Milestone 04 is active; milestones 03 and 05–08 remain planned. Their numbers continue the guide sequence and are separate from the stages inside each guide. Add supporting files when actual work needs them. The order can evolve with the learning journey.
+This roadmap covers the broader sequence. Milestone 04 has reached its functional single-node workload checkpoint; optional operations work remains. Milestones 03 and 05–08 remain planned. Their numbers continue the guide sequence and are separate from the stages inside each guide. Add supporting files when actual work needs them. The order can evolve with the learning journey.
 
 | Milestone | Focus | Evidence to produce |
 | --- | --- | --- |
 | 03 — Storage and data access | Explore cloud and local storage, data movement, capacity, and I/O behavior. | Storage architecture, reproducible checks, measured observations, and cleanup notes. |
-| [04 — Slurm (active)](docs/guides/04-single-node-slurm-learning-lab.md) | Use a functional single-node learning environment to submit CPU/GPU work and inspect scheduling, allocation, logs, contention, and failures. | CPU batch, interactive execution, explicit L4 allocation, and two-job contention recorded; cancellation, timeout, and the existing workload remain next. |
+| [04 — Slurm](docs/guides/04-single-node-slurm-learning-lab.md) | Use a functional single-node learning environment to submit CPU/GPU work and inspect scheduling, allocation, logs, contention, and application execution. | Functional path recorded through scheduled Nemotron inference; cancellation/timeout, accounting, and multi-GPU-aware container integration are deferred. |
 | 05 — Distributed training and communication | Explore collectives, accelerator communication, network topology, and distributed PyTorch/NeMo workloads, including NCCL where applicable. | Actual hardware topology, launch configuration, communication measurements, and limitations. |
 | 06 — Kubernetes and GPU orchestration | Establish a GPU-enabled cluster and examine device allocation, operators, and workload lifecycle, including NVIDIA GPU Operator where applicable. | Manifests, operator configuration, environment details, and deployment validation. |
 | 07 — Observability and troubleshooting | Inspect GPU and workload metrics, correlate logs, and investigate controlled failure scenarios. | Monitoring configuration, observed symptoms, diagnostic steps, and recovery evidence. |
