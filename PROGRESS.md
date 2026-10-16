@@ -1,58 +1,40 @@
-# Progress Log
+# Learning Record
 
-## Current state
+<a id="current-state"></a>
 
-### Guide 04 agenda status
+## Current guide outcomes
 
-Stage numbers match [Guide 04](docs/guides/04-single-node-slurm-learning-lab.md#hands-on-agenda). Results are operator-reported from the single-node Brev lab.
+### Guide 01 — core journey complete
 
-| Stage | Check | Current status |
-| --- | --- | --- |
-| 1 | Read cluster state | Complete: default `gpu` partition available; one node and one L4 registered |
-| 2 | Read the configuration | Complete: roles and change boundaries for `slurm.conf`, `gres.conf`, and `cgroup.conf` reviewed; no change required |
-| 3 | Submit a CPU batch job | Complete: normal `sbatch` submission, active queue state, and completed output observed |
-| 4 | Run interactively | Complete: scheduled Bash shell identified through `SLURM_JOB_ID` and released with `exit` |
-| 5 | Submit a GPU job | Complete: one L4 requested; detailed current-node state reported `GresUsed=gpu:nvidia_l4:1(IDX:0)` |
-| 6 | Observe contention | Complete: second GPU job remained `PD` with reason `Resources` while the first held the L4 |
-| 7 | Control the lifecycle | Deferred: cancellation and timeout exercises not run |
-| 8 | Schedule the existing workload | Complete: Slurm batch wrapper ran the existing one-record Nemotron inference path through Docker/NeMo on the L4 |
+The [eight-layer guide](docs/guides/01-brev-gpu-node-validation.md) records the path from physical GPU and Linux visibility through the NVIDIA driver, container toolchain, PyTorch/NeMo, and real application evidence. The host-to-application path is verified for the recorded L4 environment. A standalone CUDA micro-test, distributed execution, and performance measurements remain optional extensions.
 
-- **Environment:** Ubuntu 22.04, kernel `6.8.0-1069-gcp`, systemd 249, unified cgroup v2, 4 logical CPUs, 15,990 MiB detected RAM, and one NVIDIA L4 with 23,034 MiB VRAM.
-- **Scheduler checkpoint:** Slurm `26.05.5`, MUNGE, `slurmctld`, and `slurmd` are operational. Slurm advertises 12,288 MiB RAM, a maximum of three CPUs for one job, and `gpu:nvidia_l4:1`. CPU batch, interactive CPU, interactive GPU, GPU contention, and scheduled Nemotron inference have been exercised.
-- **Observed workload behavior:** A CPU-only batch job ran without reserving the L4. An interactive shell received a Slurm job context. An interactive GPU request produced `GresUsed=gpu:nvidia_l4:1(IDX:0)` on its executing node. While that job ran, a second one-L4 request remained pending for `Resources`.
-- **Operational lesson:** Inside an interactive GPU shell, `scontrol show node -d "$SLURMD_NODENAME"` is the single scheduler-side allocation check. It targets the task's actual node and avoids redundant device/environment checks when the question is allocation rather than utilization.
-- **Installation boundary:** The source-package path was an Ubuntu 22.04/cgroup-v2 compatibility choice for this node, not the normal learning path. The guide recommends an existing managed cluster or supported packages first.
-- **Application checkpoint:** A Slurm batch wrapper requested two CPUs, 8 GiB memory, one L4, and 30 minutes, then reused the existing NeMo Speech `26.07.00` one-record inference helper. It reached `Smoke test completed.` and the wrapper's final timestamp at `2026-10-15T08:58:36+00:00`.
-- **Preservation and boundaries:** The existing inference helper, NeMo container, data, cache, and `/home/ubuntu/work/nemotron-poc/run_nsc_train.sh` remain unchanged. Rootful Docker still uses `--gpus all`; this is a functional one-GPU result, not proof of multi-GPU-aware container binding. Slurm accounting and cancellation/timeout behavior remain unvalidated.
-- **Next:** Guide 04 can pause. Choose the next roadmap milestone, or return later for cancellation/timeout, accounting, and multi-GPU-aware container integration.
-
-### Guide 02 agenda status
+### Guide 02 — core journey complete
 
 Stage numbers match the [README](README.md#guide-02--adapting-nvidia-nemotron-35-streaming-asr-to-singapore-english) and numbered guide sections. Status reflects operator-reported scope; detailed limits and historical evidence follow below.
 
 | Stage | Check | Current status |
 | --- | --- | --- |
-| 1 | [Node resources](docs/guides/02-nemotron-streaming-singapore-english.md#1-node-resources) | Preflight snapshot verified |
-| 2 | [NeMo container](docs/guides/02-nemotron-streaming-singapore-english.md#2-nemo-container) | Version/import checks verified |
-| 3 | [Pretrained model](docs/guides/02-nemotron-streaming-singapore-english.md#3-pretrained-model) | Restoration, persistent cache, and GPU placement verified |
-| 4 | [Data strategy and source checks](docs/guides/02-nemotron-streaming-singapore-english.md#4-data-strategy-and-source-checks) | Train/dev/test manifest, schema, audio mapping, and split-separation checks complete for reported scope |
-| 5 | [Training and validation inputs](docs/guides/02-nemotron-streaming-singapore-english.md#5-training-and-validation-inputs) | 300/50 subsets, normalization, and NeMo conversion complete for reported checks |
-| 6 | [Pretrained inference and baseline](docs/guides/02-nemotron-streaming-singapore-english.md#6-pretrained-inference-and-baseline) | Single-record inference and fixed-50 offline baseline complete: 793 reference words / 10.84% WER |
-| 7 | [Training smoke test and artifacts](docs/guides/02-nemotron-streaming-singapore-english.md#7-training-smoke-test-and-artifacts) | Two optimizer steps and artifact saving complete; export restoration/evaluation subsequently verified |
-| 8 | [Checkpoint comparison and development](docs/guides/02-nemotron-streaming-singapore-english.md#8-checkpoint-comparison-and-development) | Current POC comparison complete: pretrained 10.84%, smoke 10.97%, pilot 10.47%; 9 improved / 7 worsened / 34 equal error counts. Pilot export/scoring frozen as POC v1; deeper training-behavior/provenance audit remains before any larger run |
-| 9 | [Held-out NSC test](docs/guides/02-nemotron-streaming-singapore-english.md#9-held-out-nsc-test) | Complete: 3,670 compatible recordings / 64,490 words; pretrained 12.5663% WER, POC v1 12.2546%; 201 fewer errors / 2.48% relative reduction |
-| 10 | [External benchmark](docs/guides/02-nemotron-streaming-singapore-english.md#10-external-benchmark) | Optional: no local GigaSpeech preparation/evaluation executed |
+| 1 | [Node resources](docs/guides/02-nemotron-streaming-singapore-english.md#1-node-resources) | **Verified:** preflight snapshot recorded |
+| 2 | [NeMo container](docs/guides/02-nemotron-streaming-singapore-english.md#2-nemo-container) | **Verified:** version and import checks recorded |
+| 3 | [Pretrained model](docs/guides/02-nemotron-streaming-singapore-english.md#3-pretrained-model) | **Verified:** restoration, persistent cache, and GPU placement recorded |
+| 4 | [Data strategy and source checks](docs/guides/02-nemotron-streaming-singapore-english.md#4-data-strategy-and-source-checks) | **Verified:** manifest, schema, audio mapping, and split-separation checks recorded for the stated scope |
+| 5 | [Training and validation inputs](docs/guides/02-nemotron-streaming-singapore-english.md#5-training-and-validation-inputs) | **Verified:** deterministic, audited 300/50 POC inputs |
+| 6 | [Pretrained inference and baseline](docs/guides/02-nemotron-streaming-singapore-english.md#6-pretrained-inference-and-baseline) | **Verified:** single-record inference and fixed-50 offline baseline, 793 reference words / 10.84% WER |
+| 7 | [Training smoke test and artifacts](docs/guides/02-nemotron-streaming-singapore-english.md#7-training-smoke-test-and-artifacts) | **Verified:** two optimizer steps, artifact saving, and later export restoration/evaluation |
+| 8 | [Checkpoint comparison and development](docs/guides/02-nemotron-streaming-singapore-english.md#8-checkpoint-comparison-and-development) | **Verified:** historical POC comparison, POC v1 freeze, and recording-level analysis |
+| 9 | [Held-out NSC test](docs/guides/02-nemotron-streaming-singapore-english.md#9-held-out-nsc-test) | **Verified:** 3,670 recordings / 64,490 words; 12.5663% → 12.2546% WER, 201 fewer errors / 2.48% relative reduction |
 
-- **Documentation:** [Guide 01](docs/guides/01-brev-gpu-node-validation.md) covers GPU-stack validation; [Guide 02](docs/guides/02-nemotron-streaming-singapore-english.md) records preparation, pretrained inference/baseline, official smoke training, the 100-step pilot, and the completed held-out NSC comparison. POC v1 reduced held-out WER from 12.5663% to 12.2546%. Further 300-/600-step training is not planned until the unresolved training-behavior/provenance questions are reviewed; GigaSpeech is optional.
-- **Guide 02:** Setup, 300/50 POC preparation/checks, single-record GPU inference, development evaluation, training/export restoration, and frozen held-out evaluation are complete from operator-reported Brev results. Development results were **10.84% pretrained**, **10.97% smoke**, and **10.47% pilot** on 50 recordings / 793 words. The finalized held-out population contained **3,670 compatible recordings / 64,490 words**. Pretrained scored **12.566289347185611% WER / 8,104 errors**; POC v1 scored **12.254613118312916% / 7,903 errors**. That is **201 fewer errors**, **0.311676 percentage points absolute**, and **2.480257% relative WER reduction**. No independent GPU run/recalculation by the guide maintainer is claimed. Statistical significance, business-critical error quality, streaming, performance, and production suitability remain unvalidated.
+The optional [external benchmark](docs/guides/02-nemotron-streaming-singapore-english.md#10-external-benchmark), full-data fine-tuning, and native streaming comparison sit under further learning and are not part of the completed nine-stage core journey.
+
+- **Documentation:** [Guide 01](docs/guides/01-brev-gpu-node-validation.md) covers GPU-stack validation; [Guide 02](docs/guides/02-nemotron-streaming-singapore-english.md) records preparation, pretrained inference/baseline, official smoke training, the 100-step pilot, and the completed held-out NSC comparison. POC v1 reduced held-out WER from 12.5663% to 12.2546%. The historical launcher remains preserved; the separate [full-data workflow](scripts/guide-02/full-finetune/README.md) is prepared but not executed. GigaSpeech is optional/deferred.
+- **Guide 02:** Setup, 300/50 POC preparation/checks, single-record GPU inference, development evaluation, training/export restoration, and frozen held-out evaluation are complete from operator-reported Brev results. Development results were **10.84% pretrained**, **10.97% smoke**, and **10.47% pilot** on 50 recordings / 793 words. The finalized held-out population contained **3,670 compatible recordings / 64,490 words**. Pretrained scored **12.566289347185611% WER / 8,104 errors**; POC v1 scored **12.254613118312916% / 7,903 errors**. That is **201 fewer errors**, **0.311676 percentage points absolute**, and **2.480257% relative WER reduction**. The 2,152/1,203 full-data inputs and workflow are prepared; no new training, streaming comparison, or candidate result is claimed. No independent GPU run/recalculation by the guide maintainer is claimed. Statistical significance, business-critical error quality, performance, and production suitability remain unvalidated.
 - **Guide 02 data roles:** `nsc_query_5h` is train and `nsc_dev_3h` is validation (dev), both from the NSC Part 6 train partition. `nsc_test` is the final in-domain test. Local checks found 111/64/70 speakers and zero shared speakers or utterance IDs across all train/development/test pairs. The source test manifest contained 3,684 records and 3,684 matching FLACs. A custom, predeclared test reference policy removed `<unk>`, `<v-noise>`, and `<noise>`, excluded six references left empty, and retained all other words/durations. Eight files incompatible with the evaluation container's FLAC decoder were excluded symmetrically, leaving 3,670 records. GigaSpeech remains optional/pending.
 - **Guide 02 annotations:** Source audits found three tag types; selection excluded whole `<unk>` utterances. Normalization changed 61 train / 4 validation texts, removing `<v-noise>` 87/7 and `<noise>` 5/0, matching the earlier inventory. Actual words, fillers, case, punctuation, and other metadata remain. An independent tag-inspection rerun failed on a missing runtime helper; no successful suggested `grep` result is reported. Cleanup is not denoising or a final WER policy; manual listening/relabeling remains future work.
 - **Guide 02 subsets:** Eligible pools were 2,158 train / 4.59 h and 1,225 validation / 2.71 h. Seed-42 generation reported 300 train / 111 speakers / 0.66 h and 50 validation / 50 speakers / 0.11 h. Independent host/helper checks confirmed record/speaker counts, zero speaker/ID overlap, and `<unk>` absence. The two derived files were corrected from `root:root` to `ubuntu:ubuntu`; original NSC files were unchanged.
 - **Guide 02 lineage/tooling:** Source manifests/audio, source-format POC subsets, `poc/normalized/`, and `poc/nemo/` remain separate stages. Normalization/conversion scripts retain their supplied versions; `baseline_smoke.py` implements the reported inference workflow; `run_nsc_train.sh` is reconstructed from supplied training commands. The complete operator-supplied `baseline_eval.py` is retained unchanged in Git; the runtime copy's recorded SHA-256 is `7fd71254fe21c78fd8179debea61c20e4d3f310c90e7f688ed791975675a31f6`, but no direct host-to-repository byte comparison was performed. The pilot export hash is `e81ae310dc076e2a74ea4e31b7f45e696f0d062379ff7d3a9ba4636b251bd863`; the final held-out manifest hash is `99a6057842ff72ca990c0639a53da44a5be1a6ed1e3224c9710bcfeb13e71809`; comparable result hashes are recorded in Guide 02. The upstream source tag, container tag, and HF checkpoint snapshot are recorded; no image digest is invented. Executed copies lived in `/home/ubuntu/work/nemotron-poc`, with no node checkout confirmed. A commit does not deploy runtime scripts or data. Final manifests omit `id`/`speaker`; use earlier manifests for overlap checks. Ownership of normalized/NeMo files remains unverified.
-- **Hands-on guides:** Guide 01 in progress; cloud connectivity, Linux host, PCIe GPU visibility, and NVIDIA driver communication validated. Host Toolkit discovery complete for the checked PATH and conventional locations; no installation found.
 - **Docker, NVIDIA container integration, container GPU passthrough, CUDA base image launch, and CUDA devel image / `nvcc` inspection:** Complete for the reported checks.
 - **PyTorch NGC container, CUDA availability, GPU identity, and interactive/one-liner workflows:** Validated or documented for the reported scope; interactive execution reported.
-- **GPU application inference:** Single-record inference and the full fixed 50-record pretrained offline validation baseline verified on October 9, 2026. Standalone CUDA/tensor checks, further training beyond the completed 100-step pilot, distributed training/NCCL, true streaming, and performance/latency benchmarking remain pending.
+- **GPU application evidence:** Single-record inference, the fixed 50-record offline baseline, POC training/export restoration, and frozen held-out comparison are verified. The full-data resource pilot, new-candidate training, native streaming comparison, standalone CUDA/tensor checks, distributed training/NCCL, and performance/latency benchmarking remain unexecuted.
 - **Official GPU training:** Two optimizer steps completed on October 9 using Speech v3.0.0 recipes, AdamW `1e-5`, deleted scheduler key, `bf16-mixed`, batch size one, `max_duration=39.99`, and two validation batches. Run `smoke-2-20261009T092152Z` saved two `.ckpt` files and a `.nemo` export. All 300 train records were duration-eligible; all-record consumption and full-run capacity were not established.
 - **Application deployments and performance benchmarks:** None documented. The offline baseline and training functionality checks are separate evidence.
 
@@ -71,32 +53,67 @@ Stage numbers match the [README](README.md#guide-02--adapting-nvidia-nemotron-35
 | POC v1 freeze | Complete before test inference; candidate remained unchanged after held-out measurement |
 | NSC held-out test preparation/evaluation | Complete: 3,684 source records; 6 empty normalized references and 8 decoder-incompatible files excluded; final 3,670-record manifest evaluated symmetrically |
 | Held-out comparison | Complete: 12.5663% → 12.2546% WER; 8,104 → 7,903 errors; 2.48% relative reduction |
-| Further 300-/600-step training, streaming | Pending; training audit required first |
+| Full-data follow-on | Prepared for 2,152 train / 1,203 development recordings; 32 GiB-or-larger-node profiling and independent 50-step resource pilot required before full training |
 | GigaSpeech external benchmark | Optional; not started |
 
 ### Guide 02 end-of-day checkpoint
 
-**Current checkpoint (October 14, 2026):** The end-to-end POC workflow is validated through frozen held-out evaluation. Full-precision fixed-development WER is **10.844892812105927% pretrained**, **10.970996216897856% smoke**, and **10.466582597730138% pilot** on 50 recordings / 793 words. On **3,670 held-out recordings / 64,490 words**, pretrained scored **12.566289347185611% / 8,104 errors** and POC v1 scored **12.254613118312916% / 7,903 errors**. The change is **201 fewer errors**, **0.311676 percentage points absolute**, and **2.480257% relative WER reduction**.
+**Historical POC checkpoint (October 14, 2026):** The end-to-end POC workflow is validated through frozen held-out evaluation. Full-precision fixed-development WER is **10.844892812105927% pretrained**, **10.970996216897856% smoke**, and **10.466582597730138% pilot** on 50 recordings / 793 words. On **3,670 held-out recordings / 64,490 words**, pretrained scored **12.566289347185611% / 8,104 errors** and POC v1 scored **12.254613118312916% / 7,903 errors**. The change is **201 fewer errors**, **0.311676 percentage points absolute**, and **2.480257% relative WER reduction**.
 
 **Pipeline:** [Preparation → baseline → smoke/export evaluation → pilot/export evaluation → recording-level comparison → POC v1 freeze → test validation/preparation → NSC held-out comparison are complete](docs/guides/02-nemotron-streaming-singapore-english.md#current-pipeline-status). The core offline in-domain POC can pause here. GigaSpeech external regression evaluation is optional; streaming/performance remain pending.
 
 **Readiness checkpoint:** Operator YAML audit and supplied launcher case establish accumulation one, internal `val_wer/min` monitoring, and launcher `save_top_k=1`. Host metadata assessment found **300 total / 300 eligible / 0 excluded / 0.656 h** within 0.1–39.99 s. The supplied pilot case is implemented in the repo: **100 steps, validation interval 50 training batches, full validation dataloader requested, logging every 10 steps**. Run `pilot-100-20261010T100537Z` **completed**, including step-100 internal `val_wer=0.12863`, checkpoints/export, restored-model **10.47% offline WER**, and read-only recording analysis. Full current host-file equality and best-checkpoint/export provenance remain unverified.
 
-**Stage 8 boundary:** Step-50 validation, actual coverage, loss, Lhotse sampling/repetition, best/last/export weight identity, and resource/time evidence remain unresolved. They did not prevent the frozen POC v1 held-out comparison, but they limit training-behavior claims and must be reviewed before any larger training expenditure. The read-only event scan remains prepared and unexecuted.
+**Stage 8 boundary:** Step-50 validation, actual coverage, loss, Lhotse sampling/repetition, best/last/export weight identity, and resource/time evidence remain unresolved. They did not prevent the frozen POC v1 held-out comparison, but they limit claims about that historical run. The read-only event scan remains prepared and unexecuted. The full-data follow-on is a separate experiment with new resource, validation, checkpoint, and candidate-freezing gates.
 
-**Next decision:** Stop with the documented offline POC, or run optional stage 10 GigaSpeech comparison if external-regression evidence justifies the added work. Do not tune POC v1 from the NSC test result. Before larger training, complete the stage 8 training-behavior/provenance audit.
+**Optional next exercise:** Keep POC v1 frozen. If continuing into the separate full-data workflow, provision a 32 GiB-or-larger node, generate the duration/OOM profile, and run the independent 50-step resource pilot. Continue to full training only if that gate passes. GigaSpeech remains optional and must not be used to retune POC v1.
 
 **Reproducibility scope:** Hashes were recorded where they answer current provenance needs: the two model exports, runtime evaluator, fixed development and final test manifests, and comparable result files. Archive hashing was deliberately deferred because no publisher checksum, transfer-comparison, or governed-retention requirement currently needs it; gzip integrity and expected member layout answered the extraction risk.
 
-## Milestone history
+### Guide 02 full-data follow-on
 
-The dated entries below record status and next steps at each milestone; earlier pending items may have been completed in later entries. Use **Current state** above and the guide completion sections for the latest status. Entry dates record documentation sync unless an execution date is explicitly stated. Historical Part 1–4 names refer to Guide 01's earlier organization; it now follows the eight-layer agenda.
+**Prepared October 16, 2026; execution pending.** The operator expanded the eligible NSC Part 6 inputs into 2,158 train / 1,225 development records, verified zero speaker and utterance-ID overlap, normalized transcripts, converted them to NeMo format, decoded every recording, and applied the existing 39.99-second recipe ceiling. The final ready inputs contain **2,152 train recordings / 4.50 hours** and **1,203 development recordings / 2.65 hours**. Their SHA-256 values are `e80e8795a2c009e12496bd3fafeb3b4ba0569f738d6a7f4f323eaed64dba69fe` and `a5a84863e904b093c814ee9742ef8de30e5032f7cb9d24c665965744bcd8680d`. The [exclusions table](docs/evidence/guide-02-full-finetune-exclusions.csv) records 24 decoder-incompatible and four over-duration recordings.
 
-### 2026-10-15 — Guide 04 workload path completed through scheduled Nemotron inference
+Two full-data smoke attempts on the original node used a Docker memory cap of 10 GiB. `batch_duration=40` and `batch_duration=20` both reached five steps and exited `137`. The kernel reported a container memory-cgroup OOM killing Python; the first event recorded approximately 9.83 GiB anonymous RSS. Slurm accounting was disabled, so this kernel evidence and the wrapper exit status establish the failure mechanism. No third parameter guess will be run on the 12 GiB node.
+
+The [new full-data workflow](scripts/guide-02/full-finetune/README.md) is implemented but unexecuted. It preserves NeMo Speech v3.0.0 and NVIDIA's official `speech_to_text_finetune.py`, verifies the duration estimator/OOMptimizer in the pinned source, requires one L4 with at least 32 GiB host RAM, generates data/GPU-specific bucket sizes, and gates a separate 1,000-step experiment behind a 50-step resource pilot. Full training uses validation every 100 steps, `val_wer` early stopping, top-three plus last checkpoints, a 1h45 per-run timer, and fixed-ID resume behavior. This is an NSC-only, separately routed Singlish specialization; general-English replay is deliberately excluded and the untouched base model remains available.
+
+Evaluation tooling is also prepared: native 320 ms cache-aware streaming at `[56,3]` is primary; the historical offline path remains for continuity. Development compares pretrained, POC v1, and the new candidate with corpus WER and paired-bootstrap intervals. Only a candidate beating both prior models on streaming development WER may be frozen. The NSC test is then a **reused benchmark**, not a pristine confirmatory test, and cannot influence selection. No new training, validation, model-selection, test, performance, or production claim is complete yet.
+
+### Guide 03 — core journey complete
+
+Stage numbers match [Guide 03](docs/guides/03-scheduling-gpu-workloads-with-slurm.md#hands-on-agenda). Results are operator-reported from the single-node Brev learning environment.
+
+| Stage | Check | Current status |
+| --- | --- | --- |
+| 1 | Read cluster state | Verified: default `gpu` partition available; one node and one L4 registered |
+| 2 | Read the configuration | Verified: roles and change boundaries for `slurm.conf`, `gres.conf`, and `cgroup.conf` reviewed; no change required |
+| 3 | Submit a CPU batch job | Verified: normal `sbatch` submission, active queue state, and completed output observed |
+| 4 | Run interactively | Verified: scheduled Bash shell identified through `SLURM_JOB_ID` and released with `exit` |
+| 5 | Submit a GPU job | Verified: one L4 requested; detailed current-node state reported `GresUsed=gpu:nvidia_l4:1(IDX:0)` |
+| 6 | Observe contention | Verified: second GPU job remained `PD` with reason `Resources` while the first held the L4 |
+| 7 | Schedule the existing workload | Verified: Slurm batch wrapper ran the existing one-record Nemotron inference path through Docker/NeMo on the L4 |
+
+- **Environment:** Ubuntu 22.04, kernel `6.8.0-1069-gcp`, systemd 249, unified cgroup v2, 4 logical CPUs, 15,990 MiB detected RAM, and one NVIDIA L4 with 23,034 MiB VRAM.
+- **Scheduler checkpoint:** Slurm `26.05.5`, MUNGE, `slurmctld`, and `slurmd` are operational. Slurm advertises 12,288 MiB RAM, a maximum of three CPUs for one job, and `gpu:nvidia_l4:1`. CPU batch, interactive CPU, interactive GPU, GPU contention, and scheduled Nemotron inference have been exercised.
+- **Observed workload behavior:** A CPU-only batch job ran without reserving the L4. An interactive shell received a Slurm job context. An interactive GPU request produced `GresUsed=gpu:nvidia_l4:1(IDX:0)` on its executing node. While that job ran, a second one-L4 request remained pending for `Resources`.
+- **Operational lesson:** Inside an interactive GPU shell, `scontrol show node -d "$SLURMD_NODENAME"` is the single scheduler-side allocation check. It targets the task's actual node and avoids redundant device/environment checks when the question is allocation rather than utilization.
+- **Installation boundary:** The source-package path was an Ubuntu 22.04/cgroup-v2 compatibility choice for this node, not the normal learning path. The guide recommends an existing managed cluster or supported packages first.
+- **Application checkpoint:** A Slurm batch wrapper requested two CPUs, 8 GiB memory, one L4, and 30 minutes, then reused the existing NeMo Speech `26.07.00` one-record inference helper. It reached `Smoke test completed.` and the wrapper's final timestamp at `2026-10-15T08:58:36+00:00`.
+- **Preservation and boundaries:** The existing inference helper, NeMo container, data, cache, and `/home/ubuntu/work/nemotron-poc/run_nsc_train.sh` remain unchanged. Rootful Docker still uses `--gpus all`; this is a functional one-GPU result, not proof of multi-GPU-aware container binding. Slurm accounting and cancellation/timeout behavior remain unvalidated.
+- **What we learned:** The seven-step core journey is complete through scheduled Nemotron inference. Cancellation/timeout, accounting, and multi-GPU-aware container integration remain optional extensions.
+
+<a id="milestone-history"></a>
+
+## Learning history
+
+The dated entries below preserve what was known and what was pending at each point. Earlier pending items may have been completed in later entries, so use [Current guide outcomes](#current-state) and the guide completion sections for the latest status. Entry dates record documentation sync unless an execution date is explicitly stated. Historical Part 1–4 names refer to Guide 01's earlier organization; it now follows the eight-layer agenda.
+
+### 2026-10-15 — Guide 03 workload path completed through scheduled Nemotron inference
 
 **CPU batch:** The operator submitted `cpu-hello.sbatch` through the normal `sbatch` interface, used the printed job ID with `squeue`, and read the job-specific output file. The script reached its final timestamp after 30 seconds and reported its two-CPU allocation. The CPU-only job used the `gpu` partition without requesting the GPU, demonstrating that partition selection and GPU allocation are separate decisions.
 
-**Interactive execution:** An `srun --pty bash` request created a scheduled shell. `SLURM_JOB_ID` was unset in the original SSH shell and populated inside the interactive allocation; `squeue` reported the job running. The otherwise identical prompt reflected the single-node controller/compute design. Exiting the shell released the allocation. One requested CPU exposed both hardware threads of one core under this lab's core-granularity policy.
+**Interactive execution:** An `srun --pty bash` request created a scheduled shell. `SLURM_JOB_ID` was unset in the original SSH shell and populated inside the interactive allocation; `squeue` reported the job running. The otherwise identical prompt reflected the single-node controller/compute design. Exiting the shell released the allocation. One requested CPU exposed both hardware threads of one core under this environment's core-granularity policy.
 
 **GPU allocation:** A second interactive request added `--gres=gpu:nvidia_l4:1`. From inside that shell, the minimum scheduler-side check `scontrol show node -d "$SLURMD_NODENAME"` reported `GresUsed=gpu:nvidia_l4:1(IDX:0)`. This establishes allocation of the configured L4 on the task's actual node. It does not measure utilization or replace an application-level CUDA test when workload function is the question.
 
@@ -106,11 +123,11 @@ The dated entries below record status and next steps at each milestone; earlier 
 
 **Evidence boundary:** Results are operator-reported. Persistent accounting is not configured, so completed-job history and final exit states are not claimed from `sacct`. Rootful Docker uses `--gpus all`; the scheduled application result validates the functional one-GPU path, not scheduler-aware container binding on a multi-GPU cluster. Raw terminal logs, transcript text, and ephemeral node identity remain outside Git.
 
-**Next:** Guide 04 can pause. Cancellation/timeout, persistent accounting, and multi-GPU-aware container integration are deferred follow-up work rather than completed claims.
+**Snapshot at the time:** The core workload path could pause here. Cancellation/timeout, persistent accounting, and multi-GPU-aware container integration were left as optional follow-up work rather than completed claims.
 
-### 2026-10-14 — Guide 04 single-node Slurm environment established
+### 2026-10-14 — Guide 03 single-node Slurm environment established
 
-Started [Guide 04](docs/guides/04-single-node-slurm-learning-lab.md) as a workload-use lab rather than an installation tutorial. The existing NVIDIA L4 Brev node runs Ubuntu 22.04, kernel `6.8.0-1069-gcp`, systemd 249, and unified cgroup v2. `slurmd -C` reported 4 logical CPUs, 15,990 MiB memory, and `gpu:nvidia_l4:1`.
+Started [Guide 03](docs/guides/03-scheduling-gpu-workloads-with-slurm.md) as a workload-use guide rather than an installation tutorial. The existing NVIDIA L4 Brev node runs Ubuntu 22.04, kernel `6.8.0-1069-gcp`, systemd 249, and unified cgroup v2. `slurmd -C` reported 4 logical CPUs, 15,990 MiB memory, and `gpu:nvidia_l4:1`.
 
 Slurm `26.05.5` was downloaded from SchedMD, verified against the published SHA-256, built successfully as upstream Debian packages, and installed with MUNGE and the controller/worker services. This source-package route is recorded as an environment-specific compatibility exception; normal readers should prefer a managed cluster or supported vendor/distribution packages.
 
@@ -120,7 +137,7 @@ No Slurm job has been submitted. MariaDB and `slurmdbd` packages are installed, 
 
 ### 2026-10-01 — Initial scaffold
 
-Prepared the portfolio README, planned learning roadmap, progress log, Git ignore rules, and directories for documentation, guides, scripts, containers, Slurm, Kubernetes, benchmarks, and diagrams.
+Prepared the repository README, planned learning roadmap, progress log, Git ignore rules, and directories for documentation, guides, scripts, containers, Slurm, Kubernetes, benchmarks, and diagrams.
 
 This entry records repository setup only. No cloud GPU provisioning or infrastructure experiments have been performed or validated as part of this setup.
 
@@ -128,7 +145,7 @@ This entry records repository setup only. No cloud GPU provisioning or infrastru
 
 ### 2026-10-01 — Broader AI infrastructure scope
 
-Broadened the portfolio framing to compute, orchestration, distributed systems, and operations. Updated the README and roadmap to describe general infrastructure concepts alongside tool-specific guides. Hands-on work remains planned.
+Broadened the shared-learning framing to compute, orchestration, distributed systems, and operations. Updated the README and roadmap to describe general infrastructure concepts alongside tool-specific guides. Hands-on work remained planned at that point.
 
 ### 2026-10-01 — Guide naming
 
@@ -420,7 +437,7 @@ This is a documentation change. Existing commands, source/preparation methods, s
 
 ### 2026-10-10 — Repository navigation aligned to Guide 02 stages
 
-Grouped the detailed Guide 02 content under the same ten numbered stages as the README, separating container validation from model restoration and retaining earlier section anchors. Added clearly planned held-out-test and external-benchmark sections without claiming new execution.
+Grouped the detailed Guide 02 content under nine core stages plus an optional external-benchmark extension, separating container validation from model restoration and retaining earlier section anchors. Added clearly planned held-out-test and external-benchmark sections without claiming new execution.
 
 Aligned the guide index, Guide 01 application handoff, current progress table, roadmap, and helper-script stage mapping. Stage 8 remains checkpoint restoration/comparison before longer training. Earlier milestones, command/log blocks, dataset policies, and script implementations are preserved; this records documentation organization only.
 
@@ -488,7 +505,7 @@ Aligned the guide index, Guide 01 application handoff, current progress table, r
 
 **Result identities:** Pretrained metrics/predictions SHA-256 values are `67dbd282cfdac18df9bb46d8497fe5f3ac98e3822dc7419584b82d0c37c0ebb1` / `cce37bafca45568b63b895f9590836490545a0694742e76dfd7e1c4467f351cb`. POC v1 metrics/predictions values are `fc760a3a9082d173f96666e1025e7a5eb72d6b5157b1a51e729f940fd3f50c8f` / `1a43e86612f00aa88a36a0572f00d28ec87a8db4ca7abf0bc6d52320d9e6f7f6`. Raw data, predictions, metrics, and model artifacts remain outside Git.
 
-**SA conclusion and next decision:** The direction matches the development result and is supported by a much larger held-out set. This is credible but modest offline in-domain generalization evidence—not statistical significance, production readiness, streaming performance, or customer-acceptance proof. The core POC may stop here. Stage 10 GigaSpeech is optional if external-regression evidence is worth the added work; before larger training, return to the unresolved training-behavior and export-provenance audit.
+**SA conclusion and next decision:** The direction matches the development result and is supported by a much larger held-out set. This is credible but modest offline in-domain generalization evidence—not statistical significance, production readiness, streaming performance, or customer-acceptance proof. The core POC may stop here. The GigaSpeech extension is optional if external-regression evidence is worth the added work; before larger training, return to the unresolved training-behavior and export-provenance audit.
 
 ## Updating this log
 

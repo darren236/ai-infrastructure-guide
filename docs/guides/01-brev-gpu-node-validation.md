@@ -12,14 +12,14 @@ Follow these eight layers in order. Each section states the question, the releva
 | [2. PCIe enumeration](#2-pcie-enumeration) | `lspci` enumerated the NVIDIA device |
 | [3. Linux kernel](#3-linux-kernel) | `uname -a` identified kernel `6.8.0-1069-gcp` |
 | [4. NVIDIA driver](#4-nvidia-driver) | Host `nvidia-smi` works; reported CUDA compatibility `13.2`, not an installed Toolkit version |
-| [5. CUDA runtime / Toolkit](#5-cuda-runtime--toolkit) | No host `nvcc` found; container devel image reports Toolkit `13.0`; standalone CUDA kernel check pending |
+| [5. CUDA runtime / Toolkit](#5-cuda-runtime--toolkit) | No host `nvcc` found; container devel image reports Toolkit `13.0`; a standalone CUDA kernel check is an optional extension |
 | [6. Container runtime](#6-container-runtime) | `docker info` and CUDA-container `docker run` validated GPU access |
 | [7. PyTorch / NeMo](#7-pytorch--nemo) | PyTorch detects CUDA/L4; NeMo imports and places Nemotron on GPU in Guide 02 |
-| [8. Application](#8-application) | Guide 02 verifies pretrained inference, a 50-record offline NSC baseline, two-step training/artifact saving, and export restoration/evaluation with baseline reproduction; further 300-/600-step training and held-out evaluation pending |
+| [8. Application](#8-application) | Guide 02 verifies pretrained inference, a fixed offline baseline, training/export restoration, and a frozen held-out comparison |
 
-**Current position:** Hardware/host visibility, driver access, container toolchain inspection, and framework access are recorded. Guide 02 reports layer 8 ASR inference, offline baseline evaluation, and a two-step official training run on the L4 (October 9, 2026), followed by export restoration/evaluation and baseline reproduction (October 10). Standalone CUDA/tensor checks, further training beyond the completed 100-step pilot, and benchmarking remain pending. For customer troubleshooting, start with the minimum relevant check and go deeper only when needed.
+**Current position:** The eight-layer core journey is complete for the recorded scope. Hardware/host visibility, driver access, container toolchain inspection, framework access, and a real ASR application path are verified. For customer troubleshooting, start with the minimum relevant check and go deeper only when needed. Standalone CUDA/tensor checks, distributed execution, and performance benchmarking are optional extensions rather than gaps in the core guide.
 
-**Evidence basis:** Operator-reported, sanitized milestones recorded on 2026-10-01 and 2026-10-05. NeMo results are linked from Guide 02. Raw recordings and instance connection details are excluded; no new remote checks were performed during this reorganization.
+**Evidence basis:** Operator-reported, sanitized milestones recorded from October 1–16, 2026. NeMo results are linked from Guide 02. Raw recordings and instance connection details are excluded; no new remote checks were performed during this documentation update.
 
 ## Before starting: establish host access
 
@@ -319,7 +319,7 @@ docker run --rm --gpus all \
 
 Framework availability and model placement lead to application validation. On October 9, 2026, Guide 02 reported one successful pretrained NSC transcription on the L4. A standalone GPU tensor computation with synchronization and a checked result remains unperformed; the ASR result validates one application execution path.
 
-Continue in [Guide 02 — Adapting NVIDIA Nemotron 3.5 Streaming ASR to Singapore English](02-nemotron-streaming-singapore-english.md). This small POC has completed preparation for 300 train / 50 validation utterances and one pretrained GPU inference. Reference `uh correct` produced raw prediction `Uh correct. <en-US>` with an explicit prompt-aware non-Lhotse configuration. The fixed 50-record offline baseline is also complete: 793 reference words, 10.84% WER. The official two-step training smoke test, checkpoint saving, export restoration/evaluation, and baseline reproduction are also complete. The two-step export scored 10.97% versus the reproduced 10.84% pretrained baseline; the workflow works without demonstrating accuracy improvement. Configuration/duration audits and the 100-step pilot are complete; the pilot scored 10.47% offline WER, with three fewer errors than pretrained. Continue training behavior/validation/sampling/export investigation in [Guide 02 stage 8 — checkpoint comparison and development](02-nemotron-streaming-singapore-english.md#8-checkpoint-comparison-and-development); preserve validation and scoring/decoding policies for comparisons. The generic one-WAV reference remains an unexecuted alternative.
+Continue in [Guide 02 — Adapting NVIDIA Nemotron 3.5 Streaming ASR to Singapore English](02-nemotron-streaming-singapore-english.md). The historical POC prepared 300 train / 50 validation utterances and verified pretrained GPU inference. Reference `uh correct` produced raw prediction `Uh correct. <en-US>` with an explicit prompt-aware non-Lhotse configuration. The fixed 50-record offline baseline completed at 10.84% WER over 793 reference words. The two-step export scored 10.97%, while the later 100-step pilot scored 10.47% and was frozen as POC v1. On 3,670 held-out recordings / 64,490 words, POC v1 reduced WER from 12.5663% to 12.2546%, or 201 fewer errors. A separate [full-data workflow](../../scripts/guide-02/full-finetune/README.md) is prepared for 2,152 train / 1,203 development recordings; its required 32 GiB-or-larger-node resource pilot has not run. The generic one-WAV reference remains an unexecuted alternative.
 
 When a customer's framework workload fails, a minimal CUDA program can isolate the lower CUDA/driver/container stack. A successful compile, kernel launch, synchronization, and result check narrows the investigation; it does not establish that every workload requirement is satisfied. A standalone CUDA compile/kernel test remains unperformed here.
 
@@ -335,8 +335,19 @@ When a customer's framework workload fails, a minimal CUDA program can isolate t
 
 An SA should not run every diagnostic every time. Use the minimum test that answers the current customer question, preferably in the customer's real execution environment. Follow failures toward the relevant layer; use deeper diagnostics when symptoms justify them. Availability and identity checks answer the access question, while a real GPU tensor computation is a useful final functional check before deciding whether to close Guide 01.
 
-## Completion boundaries and next step
+<a id="completion-boundaries-and-next-step"></a>
 
-Layers 1–7 have the specific access, inventory, and inspection evidence recorded above. They are not blanket claims that every feature or GPU workload works. Layer 8 now includes one verified pretrained NSC GPU transcription in Guide 02. The fixed 50-record offline baseline is also verified. An official two-step training smoke test and artifact saving are also verified in Guide 02. Export restoration and fixed-50 comparison are now verified from October 10 operator evidence: 10.97% two-step export versus 10.84% reproduced pretrained baseline. Further training beyond the completed 100-step pilot, best checkpoint selection, held-out evaluation, true streaming, NCCL, and performance/latency benchmarking remain unvalidated.
+## What we learned
 
-Costs, storage configuration, and instance cleanup were not included in the Guide 01 milestone evidence and remain undocumented. See [progress](../../PROGRESS.md) for the dated milestone history and [Guide 02](02-nemotron-streaming-singapore-english.md) for the ten-stage application workflow.
+Layers 1–7 have the specific access, inventory, and inspection evidence recorded above. They are not blanket claims that every feature or GPU workload works. Layer 8 includes verified pretrained NSC GPU transcription, a fixed 50-record offline baseline, official smoke/pilot training and export restoration, and the frozen POC v1 held-out comparison. Together these checks complete the guide's stated path from physical inventory to application evidence.
+
+The key lesson is to choose the minimum check that answers the current question, then follow a failure toward the relevant layer. Access, identity, application correctness, and performance are separate claims.
+
+## Further learning
+
+- Compile and verify a standalone CUDA micro-test or synchronized tensor result to isolate the lower CUDA/driver/container stack.
+- Exercise distributed execution and NCCL when more than one accelerator is available.
+- Measure latency, throughput, utilization, memory headroom, thermals, and cost under a representative workload.
+- Record storage configuration and instance cleanup when those details become part of the learning question.
+
+The separate Guide 02 full-data workflow and native 320 ms streaming selection path are also prepared but not executed. See the [Learning Record](../../PROGRESS.md) for dated evidence and [Guide 02](02-nemotron-streaming-singapore-english.md) for the complete nine-stage application journey.

@@ -1,27 +1,28 @@
-# Guide 04 — Single-node Slurm learning lab
+# Guide 03 — Scheduling GPU Workloads with Slurm
 
 [Guide agendas](../../README.md#guides-and-agendas) · [Guide index](README.md) · [Progress](../../PROGRESS.md)
 
 ## Goal
 
-Learn Slurm by using it: inspect a cluster, submit CPU and GPU work, understand why jobs run or wait, read logs and states, and troubleshoot controlled failures. The single-node setup is supporting context, not the main exercise.
+Learn Slurm by using it: inspect a cluster, submit CPU and GPU work, understand why jobs run or wait, read logs and states, and schedule an existing application. The single-node setup is supporting context for the exercises.
 
-This lab reuses the NVIDIA L4 Brev node from Guides 01 and 02. It is intentionally small enough to see the complete path from a submitted job to the GPU on one machine.
+This guide reuses the NVIDIA L4 Brev node from Guides 01 and 02. The learning environment is intentionally small enough to show the complete path from a submitted job to the GPU on one machine.
 
-## Hands-on agenda
+<a id="hands-on-agenda"></a>
+
+## Core learning path
 
 | Stage | Learning outcome | Current status |
 | --- | --- | --- |
-| 1. Read cluster state | Use `sinfo` and `scontrol` to understand partitions, nodes, resources, and state. | Complete |
-| 2. Read the configuration | Understand the distinct roles of `slurm.conf`, `gres.conf`, and `cgroup.conf`. | Complete; no change required |
-| 3. Submit a CPU batch job | Use `sbatch`, follow the printed job ID, inspect the queue, and read the output file. | Complete |
-| 4. Run interactively | Use `srun` to obtain an allocation and distinguish login-shell work from scheduled work. | Complete |
-| 5. Submit a GPU job | Request the L4 as a generic resource and verify its scheduler allocation. | Complete |
-| 6. Observe contention | Hold the only GPU with one job and inspect why a second GPU job remains pending. | Complete |
-| 7. Control the lifecycle | Cancel a job, trigger a time limit, and interpret failure and exit states. | Deferred |
-| 8. Schedule the existing workload | Move a small Nemotron/NeMo smoke workload behind Slurm without modifying the existing Guide 02 helper. | Complete |
+| 1. Read cluster state | Use `sinfo` and `scontrol` to understand partitions, nodes, resources, and state. | Verified |
+| 2. Read the configuration | Understand the distinct roles of `slurm.conf`, `gres.conf`, and `cgroup.conf`. | Verified; no change required |
+| 3. Submit a CPU batch job | Use `sbatch`, follow the printed job ID, inspect the queue, and read the output file. | Verified |
+| 4. Run interactively | Use `srun` to obtain an allocation and distinguish login-shell work from scheduled work. | Verified |
+| 5. Submit a GPU job | Request the L4 as a generic resource and verify its scheduler allocation. | Verified |
+| 6. Observe contention | Hold the only GPU with one job and inspect why a second GPU job remains pending. | Verified |
+| 7. Schedule the existing workload | Move a small Nemotron/NeMo smoke workload behind Slurm without modifying the existing Guide 02 helper. | Verified |
 
-The agenda starts with state and configuration because those explain later behavior. It does not require building Slurm from source as a normal learning step.
+The path starts with state and configuration because those explain later behavior. It ends with scheduled Nemotron inference, completing the guide's stated learning outcome. Building Slurm from source is not a normal learning step.
 
 ## Installation strategy
 
@@ -31,9 +32,9 @@ For a normal learning or customer environment, prefer this order:
 2. Otherwise use supported vendor or distribution packages whose version matches the operating system and required features.
 3. Build packages from source only when a concrete compatibility requirement justifies the extra maintenance.
 
-This lab used the third path as an environment-specific exception. Ubuntu 22.04 offered an older Slurm release for the chosen setup, while the node uses unified cgroup v2. Slurm `26.05.5` was therefore downloaded from SchedMD, its published SHA-256 was verified, and upstream Debian packages were built and installed. The package build completed with exit code `0`.
+This environment used the third path as a specific exception. Ubuntu 22.04 offered an older Slurm release for the chosen setup, while the node uses unified cgroup v2. Slurm `26.05.5` was therefore downloaded from SchedMD, its published SHA-256 was verified, and upstream Debian packages were built and installed. The package build completed with exit code `0`.
 
-That work establishes the lab; it is not a recommended beginner installation ritual. Package building, dependency resolution, and service-account repair are summarized here so the rest of the guide can focus on using the scheduler.
+That work establishes the learning environment; it is not a recommended beginner installation ritual. Package building, dependency resolution, and service-account repair are summarized here so the rest of the guide can focus on using the scheduler.
 
 ## 1. Read cluster state
 
@@ -72,7 +73,7 @@ The three compact files answer different questions:
 | `/etc/slurm/gres.conf` | Connects the logical GPU resource to the physical NVIDIA device, normally with NVML autodetection or an explicit device mapping. | GPUs are added, removed, replaced, retyped, remapped, or divided into supported MIG devices. |
 | `/etc/slurm/cgroup.conf` | Defines how Linux cgroups enforce allocated CPU, memory, swap, and device access. | The cgroup version or cluster-wide isolation and memory/device enforcement policy changes. |
 
-Individual workload requirements do not belong in these files. They belong in `#SBATCH` directives or `srun` options. The active files already supported this lab, so no configuration change was required merely to submit the exercises.
+Individual workload requirements do not belong in these files. They belong in `#SBATCH` directives or `srun` options. The active files already supported this environment, so no configuration change was required merely to submit the exercises.
 
 ## 3. CPU batch job
 
@@ -139,7 +140,7 @@ squeue -j $SLURM_JOB_ID
 
 `SLURM_JOB_ID` was unset in the original SSH shell and set in the scheduled shell; `squeue` reported the interactive job running. `exit` ended the shell and released its allocation.
 
-One requested CPU exposed two Linux CPU IDs in this lab. Slurm allocates at core granularity here, and each physical core has two hardware threads. That observation is topology and policy dependent, not a universal meaning of `--cpus-per-task=1`.
+One requested CPU exposed two Linux CPU IDs in this environment. Slurm allocates at core granularity here, and each physical core has two hardware threads. That observation is topology and policy dependent, not a universal meaning of `--cpus-per-task=1`.
 
 Use interactive `srun` for short inspection and troubleshooting. Use `sbatch` for repeatable work that should continue without an attached terminal.
 
@@ -213,11 +214,9 @@ JOBID PARTITION NAME      USER    ST TIME NODES NODELIST(REASON)
 
 Job `11` held the only configured L4. Job `12` requested the same GPU and remained pending with reason `Resources`. That queue state is sufficient evidence that Slurm prevented the second job from receiving the already allocated GPU; no repeated device inspection is required.
 
-## 7. Lifecycle control — deferred
+<a id="8-scheduled-nemotron-workload"></a>
 
-Cancellation and deliberate timeout exercises were not executed. They remain useful for learning `scancel`, `CANCELLED`, and `TIMEOUT`, but are not required to establish the functional path from submission through a scheduled GPU application. Persistent accounting is also unconfigured, so no completed-job history is claimed from `sacct`.
-
-## 8. Scheduled Nemotron workload
+## 7. Scheduled Nemotron workload
 
 The final exercise scheduled the already validated one-record Nemotron inference path rather than repeating training and creating another large checkpoint set. The Slurm wrapper requested the resources; the existing Guide 02 helper, data, and cache remained unchanged:
 
@@ -254,6 +253,26 @@ The operator submitted the wrapper with ordinary `sbatch`. The job reached the e
 
 This is a functional single-node integration result. Rootful Docker still uses `--gpus all`; on this one-GPU host that reaches the allocated L4, but it does not establish scheduler-aware container GPU binding on a multi-GPU cluster. No additional training, accuracy, latency, throughput, or production-readiness claim is made.
 
+## What we learned
+
+- Scheduler-visible resources are configured abstractions, so node configuration and physical inventory answer different questions.
+- Selecting a partition does not allocate a GPU; the workload must request the generic resource explicitly.
+- Interactive and batch work share the same allocation model even though their user experience differs.
+- A pending reason of `Resources` explained the observed single-GPU contention without repeated device inspection.
+- The scheduled Nemotron run connected allocation to real application execution, which completed the seven-step core journey.
+
+<a id="7-lifecycle-control--deferred"></a>
+
+## Further learning
+
+### Lifecycle control
+
+Cancellation and deliberate timeout exercises were not executed. They remain useful for learning `scancel`, `CANCELLED`, and `TIMEOUT`, but are not required for this guide's core outcome.
+
+### Accounting and multi-GPU container integration
+
+Persistent accounting is unconfigured, so no completed-job history is claimed from `sacct`. Rootful Docker uses `--gpus all`; a multi-GPU environment should test scheduler-aware device binding and isolation rather than infer them from this single-GPU result.
+
 ## Troubleshooting lessons from setup
 
 ### Do not diagnose a cluster before it has a configuration
@@ -287,12 +306,12 @@ Repeated status commands would not have added evidence after the node reached `i
 
 ## Boundaries
 
-This is a functional single-node learning lab, not a production cluster design. It does not validate high availability, shared storage, multi-node networking, multi-user isolation, identity integration, fair-share policy, reservations, backfill behavior under sustained load, operational monitoring, or disaster recovery. The controller and worker share one failure domain, and local data and the root filesystem are on the same underlying volume.
+This is a functional single-node learning environment, not a production cluster design. It does not validate high availability, shared storage, multi-node networking, multi-user isolation, identity integration, fair-share policy, reservations, backfill behavior under sustained load, operational monitoring, or disaster recovery. The controller and worker share one failure domain, and local data and the root filesystem are on the same underlying volume.
 
 The CPU batch, interactive allocation, GPU allocation, observed two-job contention, and scheduled Nemotron inference are operator-reported. GPU allocation is not GPU utilization, and the contention result covers only the configured single-GPU case. Persistent accounting, cancellation/timeout behavior, scheduler-aware container GPU binding, and production workload behavior remain unvalidated.
 
 The existing Nemotron inference helper and training launcher remain unchanged. The scheduled smoke job reused the existing one-record inference path and did not run a new training experiment.
 
-## Next step
+## Where the evidence stops
 
-The core learning milestone can pause here: cluster state, configuration roles, batch and interactive work, explicit GPU allocation, contention, and one scheduled Nemotron inference are documented. Cancellation, timeout, persistent accounting, and multi-GPU-aware container integration remain optional follow-up work if deeper Slurm operations are the next priority.
+The core guide is complete: cluster state, configuration roles, batch and interactive work, explicit GPU allocation, contention, and one scheduled Nemotron inference are documented. Cancellation, timeout, persistent accounting, and multi-GPU-aware container integration remain optional exercises if deeper Slurm operations are the next priority.

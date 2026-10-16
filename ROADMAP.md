@@ -1,24 +1,33 @@
-# Learning Roadmap
+# Further Learning
 
-The [repository README](README.md#guides-and-agendas) gives the agendas for the active guides: GPU Node Validation, the Nemotron ASR POC, and the single-node Slurm learning lab. See [progress](PROGRESS.md) for recorded results.
+The three [published guides](README.md#guides-and-agendas) are complete for their stated core outcomes. This page collects optional extensions and broader topics without assigning guide numbers before a guide is published.
 
-This roadmap covers the broader sequence. Milestone 04 has reached its functional single-node workload checkpoint; optional operations work remains. Milestones 03 and 05–08 remain planned. Their numbers continue the guide sequence and are separate from the stages inside each guide. Add supporting files when actual work needs them. The order can evolve with the learning journey.
+## Optional extensions to the published guides
 
-| Milestone | Focus | Evidence to produce |
+| Guide | What to try | Why it matters | Where the evidence stops |
+| --- | --- | --- | --- |
+| [Guide 01 — GPU Node Validation](docs/guides/01-brev-gpu-node-validation.md) | Run a standalone CUDA micro-test, exercise distributed execution, and measure latency, throughput, utilization, and thermals. | These checks extend functional access into compiler, communication, and performance evidence. | The recorded work verifies the path through a real application, but not isolated kernel behavior, multi-GPU communication, or sustained performance. |
+| [Guide 02 — Nemotron ASR Adaptation](docs/guides/02-nemotron-streaming-singapore-english.md) | Run the prepared full-data workflow on a 32 GiB-or-larger node, compare native streaming behavior, and evaluate GigaSpeech without tuning from it. | These exercises test resource capacity, deployment-mode quality, and out-of-domain generalization. | The 300/50 POC is complete. The 2,152/1,203 workflow is prepared but has no new candidate result; streaming and GigaSpeech comparisons have not been run. |
+| [Guide 03 — Scheduling GPU Workloads with Slurm](docs/guides/03-scheduling-gpu-workloads-with-slurm.md) | Exercise cancellation and timeouts, configure persistent accounting, and test scheduler-aware container binding on more than one GPU. | These exercises add lifecycle history, operational visibility, and stronger isolation evidence. | The recorded single-node path ends with scheduled one-record Nemotron inference. |
+
+The optional Guide 02 full-data workflow preserves NeMo Speech v3.0.0 and the official training entry point. Two 10 GiB-container attempts on the original node reached five steps and ended in confirmed memory-cgroup OOMs. The next evidence gate is duration/OOM profiling and an independent 50-step resource pilot on a 32 GiB-or-larger node. Full training should continue only if that gate passes.
+
+## Broader topics
+
+| Topic | Why explore it | Evidence to add |
 | --- | --- | --- |
-| 03 — Storage and data access | Explore cloud and local storage, data movement, capacity, and I/O behavior. | Storage architecture, reproducible checks, measured observations, and cleanup notes. |
-| [04 — Slurm](docs/guides/04-single-node-slurm-learning-lab.md) | Use a functional single-node learning environment to submit CPU/GPU work and inspect scheduling, allocation, logs, contention, and application execution. | Functional path recorded through scheduled Nemotron inference; cancellation/timeout, accounting, and multi-GPU-aware container integration are deferred. |
-| 05 — Distributed training and communication | Explore collectives, accelerator communication, network topology, and distributed PyTorch/NeMo workloads, including NCCL where applicable. | Actual hardware topology, launch configuration, communication measurements, and limitations. |
-| 06 — Kubernetes and GPU orchestration | Establish a GPU-enabled cluster and examine device allocation, operators, and workload lifecycle, including NVIDIA GPU Operator where applicable. | Manifests, operator configuration, environment details, and deployment validation. |
-| 07 — Observability and troubleshooting | Inspect GPU and workload metrics, correlate logs, and investigate controlled failure scenarios. | Monitoring configuration, observed symptoms, diagnostic steps, and recovery evidence. |
-| 08 — Architecture synthesis | Connect compute, scheduling, networking, and storage requirements into a documented AI infrastructure design. | Architecture diagram, tradeoff analysis, reproducible benchmark method, and clearly bounded conclusions. |
+| Storage and data access | Connect capacity, movement, locality, and I/O behavior to model workflows. | Storage architecture, reproducible checks, measured observations, and cleanup notes. |
+| Distributed training and communication | Understand collectives, accelerator communication, topology, and NCCL behavior where applicable. | Hardware topology, launch configuration, communication measurements, and limitations. |
+| Kubernetes and GPU orchestration | Compare scheduler and operator approaches to accelerator allocation and workload lifecycle. | Manifests, operator configuration, environment details, and deployment validation. |
+| Observability and troubleshooting | Correlate GPU metrics, workload logs, and controlled failure symptoms. | Monitoring configuration, observed symptoms, diagnostic steps, and recovery evidence. |
+| Architecture synthesis | Connect compute, scheduling, networking, storage, and model requirements. | Architecture diagrams, tradeoff analysis, reproducible benchmark methods, and bounded conclusions. |
 
-For the active ASR POC, [Guide 02 stage 9 — held-out NSC test](docs/guides/02-nemotron-streaming-singapore-english.md#9-held-out-nsc-test) is complete. On 3,670 compatible held-out recordings / 64,490 reference words, the frozen 100-step POC v1 reduced WER from 12.5663% to 12.2546%: 201 fewer word errors, 0.3117 percentage points absolute, and 2.48% relative. This supports a modest offline in-domain generalization claim, not production readiness. The POC may pause here; [stage 10](docs/guides/02-nemotron-streaming-singapore-english.md#10-external-benchmark) GigaSpeech evaluation is an optional frozen-model regression check if broader evidence is worth the additional work. Validation history, Lhotse exposure, training loss, resource evidence, and checkpoint/export provenance remain limitations to resolve before any further 300-/600-step training. Streaming/performance, workload packaging, and Slurm submission are later work.
+## Evidence standard for future additions
 
-## Milestone completion criteria
+- Perform the exercise in an identified environment.
+- Explain how to reproduce it and link to relevant code or configuration.
+- Support results with reviewed, sanitized evidence and state the limitations.
+- Record costs and cleanup steps when available.
+- Update the [Learning Record](PROGRESS.md) with the actual outcome and the next useful question.
 
-- The experiment has been performed in an identified environment.
-- The write-up explains how to reproduce it and links to relevant code or configuration.
-- Results are supported by sanitized evidence and include limitations.
-- Costs and cleanup steps are recorded when available.
-- [PROGRESS.md](PROGRESS.md) is updated with the actual outcome and next step.
+Topics receive guide numbers only when their core learning journey and supporting evidence are ready to publish.
