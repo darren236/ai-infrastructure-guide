@@ -4,23 +4,33 @@ The three [published guides](README.md#guides-and-agendas) are complete for thei
 
 ## Optional extensions to the published guides
 
-| Guide | What to try | Why it matters | Where the evidence stops |
-| --- | --- | --- | --- |
-| [Guide 01 — GPU Node Validation](docs/guides/01-brev-gpu-node-validation.md) | Run a standalone CUDA micro-test, exercise distributed execution, and measure latency, throughput, utilization, and thermals. | These checks extend functional access into compiler, communication, and performance evidence. | The recorded work verifies the path through a real application, but not isolated kernel behavior, multi-GPU communication, or sustained performance. |
-| [Guide 02 — Nemotron ASR Adaptation](docs/guides/02-nemotron-streaming-singapore-english.md) | Run the prepared full-data workflow on a 32 GiB-or-larger node, compare native streaming behavior, and evaluate GigaSpeech without tuning from it. | These exercises test resource capacity, deployment-mode quality, and out-of-domain generalization. | The 300/50 POC is complete. The 2,152/1,203 workflow is prepared but has no new candidate result; streaming and GigaSpeech comparisons have not been run. |
-| [Guide 03 — Scheduling GPU Workloads with Slurm](docs/guides/03-scheduling-gpu-workloads-with-slurm.md) | Exercise cancellation and timeouts, configure persistent accounting, and test scheduler-aware container binding on more than one GPU. | These exercises add lifecycle history, operational visibility, and stronger isolation evidence. | The recorded single-node path ends with scheduled one-record Nemotron inference. |
+### [Guide 01 — GPU Node Validation](docs/guides/01-brev-gpu-node-validation.md)
+
+- **What to try:** Run a standalone CUDA micro-test, exercise distributed execution, and measure latency, throughput, utilization, and thermals.
+- **Why it matters:** These checks extend functional access into compiler, communication, and performance evidence.
+- **Where the evidence stops:** The recorded work verifies the path through a real application, but not isolated kernel behavior, multi-GPU communication, or sustained performance.
+
+### [Guide 02 — Nemotron ASR Adaptation](docs/guides/02-nemotron-streaming-singapore-english.md)
+
+- **What to try:** Run the prepared full-data workflow on a 32 GiB-or-larger node, compare native streaming behavior, and evaluate GigaSpeech without tuning from it.
+- **Why it matters:** These exercises test resource capacity, deployment-mode quality, and out-of-domain generalization.
+- **Where the evidence stops:** The 300/50 POC is complete. The 2,152/1,203 workflow is prepared but has no new candidate result; streaming and GigaSpeech comparisons have not been run.
+
+### [Guide 03 — Scheduling GPU Workloads with Slurm](docs/guides/03-scheduling-gpu-workloads-with-slurm.md)
+
+- **What to try:** Exercise cancellation and timeouts, configure persistent accounting, and test scheduler-aware container binding on more than one GPU.
+- **Why it matters:** These exercises add lifecycle history, operational visibility, and stronger isolation evidence.
+- **Where the evidence stops:** The recorded single-node path ends with scheduled one-record Nemotron inference.
 
 The optional Guide 02 full-data workflow preserves NeMo Speech v3.0.0 and the official training entry point. Two 10 GiB-container attempts on the original node reached five steps and ended in confirmed memory-cgroup OOMs. The next evidence gate is duration/OOM profiling and an independent 50-step resource pilot on a 32 GiB-or-larger node. Full training should continue only if that gate passes.
 
 ## Broader topics
 
-| Topic | Why explore it | Evidence to add |
-| --- | --- | --- |
-| Storage and data access | Connect capacity, movement, locality, and I/O behavior to model workflows. | Storage architecture, reproducible checks, measured observations, and cleanup notes. |
-| Distributed training and communication | Understand collectives, accelerator communication, topology, and NCCL behavior where applicable. | Hardware topology, launch configuration, communication measurements, and limitations. |
-| Kubernetes and GPU orchestration | Compare scheduler and operator approaches to accelerator allocation and workload lifecycle. | Manifests, operator configuration, environment details, and deployment validation. |
-| Observability and troubleshooting | Correlate GPU metrics, workload logs, and controlled failure symptoms. | Monitoring configuration, observed symptoms, diagnostic steps, and recovery evidence. |
-| Architecture synthesis | Connect compute, scheduling, networking, storage, and model requirements. | Architecture diagrams, tradeoff analysis, reproducible benchmark methods, and bounded conclusions. |
+- **Storage and data access:** Connect capacity, movement, locality, and I/O behavior to model workflows. Add storage architecture, reproducible checks, measured observations, and cleanup notes.
+- **Distributed training and communication:** Understand collectives, accelerator communication, topology, and NCCL behavior where applicable. Add hardware topology, launch configuration, communication measurements, and limitations.
+- **Kubernetes and GPU orchestration:** Compare scheduler and operator approaches to accelerator allocation and workload lifecycle. Add manifests, operator configuration, environment details, and deployment validation.
+- **Observability and troubleshooting:** Correlate GPU metrics, workload logs, and controlled failure symptoms. Add monitoring configuration, observed symptoms, diagnostic steps, and recovery evidence.
+- **Architecture synthesis:** Connect compute, scheduling, networking, storage, and model requirements. Add architecture diagrams, trade-off analysis, reproducible benchmark methods, and bounded conclusions.
 
 ## Evidence standard for future additions
 

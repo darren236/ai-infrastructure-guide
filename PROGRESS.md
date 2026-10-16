@@ -6,23 +6,32 @@
 
 ### Guide 01 — core journey complete
 
-The [eight-layer guide](docs/guides/01-brev-gpu-node-validation.md) records the path from physical GPU and Linux visibility through the NVIDIA driver, container toolchain, PyTorch/NeMo, and real application evidence. The host-to-application path is verified for the recorded L4 environment. A standalone CUDA micro-test, distributed execution, and performance measurements remain optional extensions.
+The current outcome follows the same eight linked layers as [Guide 01](docs/guides/01-brev-gpu-node-validation.md):
+
+1. [Physical GPU](docs/guides/01-brev-gpu-node-validation.md#1-physical-gpu) — **Verified:** NVIDIA L4, 24 GB class, identified through remote inventory and later checks.
+2. [PCIe enumeration](docs/guides/01-brev-gpu-node-validation.md#2-pcie-enumeration) — **Verified:** Linux enumerated the NVIDIA device.
+3. [Linux kernel](docs/guides/01-brev-gpu-node-validation.md#3-linux-kernel) — **Verified:** Ubuntu 22.04.5 LTS, kernel `6.8.0-1069-gcp`, and x86_64 recorded.
+4. [NVIDIA driver](docs/guides/01-brev-gpu-node-validation.md#4-nvidia-driver) — **Verified:** host `nvidia-smi` detected the L4; its CUDA value is treated as driver compatibility.
+5. [CUDA runtime / Toolkit](docs/guides/01-brev-gpu-node-validation.md#5-cuda-runtime--toolkit) — **Verified:** no conventional host Toolkit found; CUDA `13.0` `nvcc` inspected in a development container.
+6. [Container runtime](docs/guides/01-brev-gpu-node-validation.md#6-container-runtime) — **Verified:** Docker, NVIDIA integration, and CUDA-container GPU access worked.
+7. [PyTorch / NeMo](docs/guides/01-brev-gpu-node-validation.md#7-pytorch--nemo) — **Verified:** PyTorch detected CUDA/L4; NeMo imported and placed Nemotron on the GPU.
+8. [Application](docs/guides/01-brev-gpu-node-validation.md#8-application) — **Verified:** Guide 02 completed inference, training/export restoration, and frozen held-out evaluation.
+
+The host-to-application path is verified for the recorded L4 environment. A standalone CUDA micro-test, distributed execution, and performance measurements remain optional extensions.
 
 ### Guide 02 — core journey complete
 
 Stage numbers match the [README](README.md#guide-02--adapting-nvidia-nemotron-35-streaming-asr-to-singapore-english) and numbered guide sections. Status reflects operator-reported scope; detailed limits and historical evidence follow below.
 
-| Stage | Check | Current status |
-| --- | --- | --- |
-| 1 | [Node resources](docs/guides/02-nemotron-streaming-singapore-english.md#1-node-resources) | **Verified:** preflight snapshot recorded |
-| 2 | [NeMo container](docs/guides/02-nemotron-streaming-singapore-english.md#2-nemo-container) | **Verified:** version and import checks recorded |
-| 3 | [Pretrained model](docs/guides/02-nemotron-streaming-singapore-english.md#3-pretrained-model) | **Verified:** restoration, persistent cache, and GPU placement recorded |
-| 4 | [Data strategy and source checks](docs/guides/02-nemotron-streaming-singapore-english.md#4-data-strategy-and-source-checks) | **Verified:** manifest, schema, audio mapping, and split-separation checks recorded for the stated scope |
-| 5 | [Training and validation inputs](docs/guides/02-nemotron-streaming-singapore-english.md#5-training-and-validation-inputs) | **Verified:** deterministic, audited 300/50 POC inputs |
-| 6 | [Pretrained inference and baseline](docs/guides/02-nemotron-streaming-singapore-english.md#6-pretrained-inference-and-baseline) | **Verified:** single-record inference and fixed-50 offline baseline, 793 reference words / 10.84% WER |
-| 7 | [Training smoke test and artifacts](docs/guides/02-nemotron-streaming-singapore-english.md#7-training-smoke-test-and-artifacts) | **Verified:** two optimizer steps, artifact saving, and later export restoration/evaluation |
-| 8 | [Checkpoint comparison and development](docs/guides/02-nemotron-streaming-singapore-english.md#8-checkpoint-comparison-and-development) | **Verified:** historical POC comparison, POC v1 freeze, and recording-level analysis |
-| 9 | [Held-out NSC test](docs/guides/02-nemotron-streaming-singapore-english.md#9-held-out-nsc-test) | **Verified:** 3,670 recordings / 64,490 words; 12.5663% → 12.2546% WER, 201 fewer errors / 2.48% relative reduction |
+1. [Node resources](docs/guides/02-nemotron-streaming-singapore-english.md#1-node-resources) — **Verified:** preflight snapshot recorded.
+2. [NeMo container](docs/guides/02-nemotron-streaming-singapore-english.md#2-nemo-container) — **Verified:** version and import checks recorded.
+3. [Pretrained model](docs/guides/02-nemotron-streaming-singapore-english.md#3-pretrained-model) — **Verified:** restoration, persistent cache, and GPU placement recorded.
+4. [Data strategy and source checks](docs/guides/02-nemotron-streaming-singapore-english.md#4-data-strategy-and-source-checks) — **Verified:** manifest, schema, audio mapping, and split-separation checks recorded for the stated scope.
+5. [Training and validation inputs](docs/guides/02-nemotron-streaming-singapore-english.md#5-training-and-validation-inputs) — **Verified:** deterministic, audited 300/50 POC inputs.
+6. [Pretrained inference and baseline](docs/guides/02-nemotron-streaming-singapore-english.md#6-pretrained-inference-and-baseline) — **Verified:** single-record inference and fixed-50 offline baseline, 793 reference words / 10.84% WER.
+7. [Training smoke test and artifacts](docs/guides/02-nemotron-streaming-singapore-english.md#7-training-smoke-test-and-artifacts) — **Verified:** two optimizer steps, artifact saving, and later export restoration/evaluation.
+8. [Checkpoint comparison and development](docs/guides/02-nemotron-streaming-singapore-english.md#8-checkpoint-comparison-and-development) — **Verified:** historical POC comparison, POC v1 freeze, and recording-level analysis.
+9. [Held-out NSC test](docs/guides/02-nemotron-streaming-singapore-english.md#9-held-out-nsc-test) — **Verified:** 3,670 recordings / 64,490 words; 12.5663% → 12.2546% WER, 201 fewer errors / 2.48% relative reduction.
 
 The optional [external benchmark](docs/guides/02-nemotron-streaming-singapore-english.md#10-external-benchmark), full-data fine-tuning, and native streaming comparison sit under further learning and are not part of the completed nine-stage core journey.
 
@@ -84,15 +93,13 @@ Evaluation tooling is also prepared: native 320 ms cache-aware streaming at `[56
 
 Stage numbers match [Guide 03](docs/guides/03-scheduling-gpu-workloads-with-slurm.md#hands-on-agenda). Results are operator-reported from the single-node Brev learning environment.
 
-| Stage | Check | Current status |
-| --- | --- | --- |
-| 1 | Read cluster state | Verified: default `gpu` partition available; one node and one L4 registered |
-| 2 | Read the configuration | Verified: roles and change boundaries for `slurm.conf`, `gres.conf`, and `cgroup.conf` reviewed; no change required |
-| 3 | Submit a CPU batch job | Verified: normal `sbatch` submission, active queue state, and completed output observed |
-| 4 | Run interactively | Verified: scheduled Bash shell identified through `SLURM_JOB_ID` and released with `exit` |
-| 5 | Submit a GPU job | Verified: one L4 requested; detailed current-node state reported `GresUsed=gpu:nvidia_l4:1(IDX:0)` |
-| 6 | Observe contention | Verified: second GPU job remained `PD` with reason `Resources` while the first held the L4 |
-| 7 | Schedule the existing workload | Verified: Slurm batch wrapper ran the existing one-record Nemotron inference path through Docker/NeMo on the L4 |
+1. [Read cluster state](docs/guides/03-scheduling-gpu-workloads-with-slurm.md#1-read-cluster-state) — **Verified:** default `gpu` partition available; one node and one L4 registered.
+2. [Read the configuration](docs/guides/03-scheduling-gpu-workloads-with-slurm.md#2-read-the-configuration) — **Verified:** roles and change boundaries for `slurm.conf`, `gres.conf`, and `cgroup.conf` reviewed; no change required.
+3. [Submit a CPU batch job](docs/guides/03-scheduling-gpu-workloads-with-slurm.md#3-cpu-batch-job) — **Verified:** normal `sbatch` submission, active queue state, and completed output observed.
+4. [Run interactively](docs/guides/03-scheduling-gpu-workloads-with-slurm.md#4-interactive-srun) — **Verified:** scheduled Bash shell identified through `SLURM_JOB_ID` and released with `exit`.
+5. [Submit a GPU job](docs/guides/03-scheduling-gpu-workloads-with-slurm.md#5-gpu-allocation) — **Verified:** one L4 requested; detailed current-node state reported `GresUsed=gpu:nvidia_l4:1(IDX:0)`.
+6. [Observe contention](docs/guides/03-scheduling-gpu-workloads-with-slurm.md#6-gpu-contention) — **Verified:** second GPU job remained `PD` with reason `Resources` while the first held the L4.
+7. [Schedule the existing workload](docs/guides/03-scheduling-gpu-workloads-with-slurm.md#7-scheduled-nemotron-workload) — **Verified:** the Slurm batch wrapper ran the existing one-record Nemotron inference path through Docker/NeMo on the L4.
 
 - **Environment:** Ubuntu 22.04, kernel `6.8.0-1069-gcp`, systemd 249, unified cgroup v2, 4 logical CPUs, 15,990 MiB detected RAM, and one NVIDIA L4 with 23,034 MiB VRAM.
 - **Scheduler checkpoint:** Slurm `26.05.5`, MUNGE, `slurmctld`, and `slurmd` are operational. Slurm advertises 12,288 MiB RAM, a maximum of three CPUs for one job, and `gpu:nvidia_l4:1`. CPU batch, interactive CPU, interactive GPU, GPU contention, and scheduled Nemotron inference have been exercised.
@@ -108,6 +115,10 @@ Stage numbers match [Guide 03](docs/guides/03-scheduling-gpu-workloads-with-slur
 ## Learning history
 
 The dated entries below preserve what was known and what was pending at each point. Earlier pending items may have been completed in later entries, so use [Current guide outcomes](#current-state) and the guide completion sections for the latest status. Entry dates record documentation sync unless an execution date is explicitly stated. Historical Part 1–4 names refer to Guide 01's earlier organization; it now follows the eight-layer agenda.
+
+### 2026-10-16 — Step-linked learning paths restored
+
+Replaced overview and current-outcome tables with clear linked lists for the eight Guide 01 layers, nine Guide 02 stages, and seven Guide 03 steps. The README, guide index, guide openings, Further Learning page, and current outcomes now use the same sequential navigation pattern. Detailed evidence and comparison tables remain where their structure helps interpretation. This is a documentation presentation update; no scripts, execution results, or evidence boundaries changed.
 
 ### 2026-10-15 — Guide 03 workload path completed through scheduled Nemotron inference
 

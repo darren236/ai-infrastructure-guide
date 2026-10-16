@@ -12,15 +12,13 @@ This guide reuses the NVIDIA L4 Brev node from Guides 01 and 02. The learning en
 
 ## Core learning path
 
-| Stage | Learning outcome | Current status |
-| --- | --- | --- |
-| 1. Read cluster state | Use `sinfo` and `scontrol` to understand partitions, nodes, resources, and state. | Verified |
-| 2. Read the configuration | Understand the distinct roles of `slurm.conf`, `gres.conf`, and `cgroup.conf`. | Verified; no change required |
-| 3. Submit a CPU batch job | Use `sbatch`, follow the printed job ID, inspect the queue, and read the output file. | Verified |
-| 4. Run interactively | Use `srun` to obtain an allocation and distinguish login-shell work from scheduled work. | Verified |
-| 5. Submit a GPU job | Request the L4 as a generic resource and verify its scheduler allocation. | Verified |
-| 6. Observe contention | Hold the only GPU with one job and inspect why a second GPU job remains pending. | Verified |
-| 7. Schedule the existing workload | Move a small Nemotron/NeMo smoke workload behind Slurm without modifying the existing Guide 02 helper. | Verified |
+1. [Read cluster state](#1-read-cluster-state) — use `sinfo` and `scontrol` to understand partitions, nodes, resources, and state. **Verified.**
+2. [Read the configuration](#2-read-the-configuration) — understand the distinct roles of `slurm.conf`, `gres.conf`, and `cgroup.conf`. **Verified; no change was required.**
+3. [Submit a CPU batch job](#3-cpu-batch-job) — use `sbatch`, follow the printed job ID, inspect the queue, and read the output file. **Verified.**
+4. [Run interactively](#4-interactive-srun) — use `srun` to obtain an allocation and distinguish login-shell work from scheduled work. **Verified.**
+5. [Submit a GPU job](#5-gpu-allocation) — request the L4 as a generic resource and verify its scheduler allocation. **Verified.**
+6. [Observe contention](#6-gpu-contention) — hold the only GPU with one job and inspect why a second GPU job remains pending. **Verified.**
+7. [Schedule the existing workload](#7-scheduled-nemotron-workload) — move a small Nemotron/NeMo smoke workload behind Slurm without modifying the existing Guide 02 helper. **Verified.**
 
 The path starts with state and configuration because those explain later behavior. It ends with scheduled Nemotron inference, completing the guide's stated learning outcome. Building Slurm from source is not a normal learning step.
 

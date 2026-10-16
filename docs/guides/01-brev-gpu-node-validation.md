@@ -6,16 +6,14 @@
 
 Follow these eight layers in order. Each section states the question, the relevant check, and what the observed result establishes. Guide 01 covers infrastructure and framework access; Guide 02 continues into the Nemotron ASR application. This is a reading and troubleshooting agenda, rather than the chronological order in which every command was run.
 
-| Layer | Check and current evidence |
-| --- | --- |
-| [1. Physical GPU](#1-physical-gpu) | NVIDIA L4, 24 GB class; remote inventory, not a physical inspection |
-| [2. PCIe enumeration](#2-pcie-enumeration) | `lspci` enumerated the NVIDIA device |
-| [3. Linux kernel](#3-linux-kernel) | `uname -a` identified kernel `6.8.0-1069-gcp` |
-| [4. NVIDIA driver](#4-nvidia-driver) | Host `nvidia-smi` works; reported CUDA compatibility `13.2`, not an installed Toolkit version |
-| [5. CUDA runtime / Toolkit](#5-cuda-runtime--toolkit) | No host `nvcc` found; container devel image reports Toolkit `13.0`; a standalone CUDA kernel check is an optional extension |
-| [6. Container runtime](#6-container-runtime) | `docker info` and CUDA-container `docker run` validated GPU access |
-| [7. PyTorch / NeMo](#7-pytorch--nemo) | PyTorch detects CUDA/L4; NeMo imports and places Nemotron on GPU in Guide 02 |
-| [8. Application](#8-application) | Guide 02 verifies pretrained inference, a fixed offline baseline, training/export restoration, and a frozen held-out comparison |
+1. [Physical GPU](#1-physical-gpu) — identify the NVIDIA L4, 24 GB class GPU while keeping the boundary between remote inventory and physical inspection clear.
+2. [PCIe enumeration](#2-pcie-enumeration) — use `lspci` to confirm that Linux can see the NVIDIA device.
+3. [Linux kernel](#3-linux-kernel) — identify Ubuntu, kernel `6.8.0-1069-gcp`, x86_64, and the current execution context.
+4. [NVIDIA driver](#4-nvidia-driver) — verify host communication with `nvidia-smi` and interpret CUDA `13.2` as driver compatibility, not an installed Toolkit version.
+5. [CUDA runtime / Toolkit](#5-cuda-runtime--toolkit) — distinguish the absent host `nvcc` from the CUDA `13.0` development toolchain supplied by a container.
+6. [Container runtime](#6-container-runtime) — use `docker info` and a GPU-enabled CUDA container to validate the container access path.
+7. [PyTorch / NeMo](#7-pytorch--nemo) — confirm that PyTorch detects CUDA and the L4, then connect that result to NeMo model placement in Guide 02.
+8. [Application](#8-application) — use Guide 02's pretrained inference, fixed offline baseline, training/export restoration, and frozen held-out comparison as real application evidence.
 
 **Current position:** The eight-layer core journey is complete for the recorded scope. Hardware/host visibility, driver access, container toolchain inspection, framework access, and a real ASR application path are verified. For customer troubleshooting, start with the minimum relevant check and go deeper only when needed. Standalone CUDA/tensor checks, distributed execution, and performance benchmarking are optional extensions rather than gaps in the core guide.
 
