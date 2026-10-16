@@ -20,19 +20,13 @@ This guide reuses the NVIDIA L4 Brev node from Guides 01 and 02. The learning en
 6. [Observe contention](#6-gpu-contention) — hold the only GPU with one job and inspect why a second GPU job remains pending. **Verified.**
 7. [Schedule the existing workload](#7-scheduled-nemotron-workload) — move a small Nemotron/NeMo smoke workload behind Slurm without modifying the existing Guide 02 helper. **Verified.**
 
-The path starts with state and configuration because those explain later behavior. It ends with scheduled Nemotron inference, completing the guide's stated learning outcome. Building Slurm from source is not a normal learning step.
+The path starts with state and configuration because those explain later behavior. It ends with scheduled Nemotron inference, completing the guide's stated learning outcome.
 
-## Installation strategy
+## Environment assumption
 
-For a normal learning or customer environment, prefer this order:
+This guide assumes a working Slurm cluster. Prefer a managed cluster or supported vendor/distribution packages; build packages from source only when a specific compatibility requirement justifies the maintenance burden.
 
-1. Use an existing managed Slurm cluster when available.
-2. Otherwise use supported vendor or distribution packages whose version matches the operating system and required features.
-3. Build packages from source only when a concrete compatibility requirement justifies the extra maintenance.
-
-This environment used the third path as a specific exception. Ubuntu 22.04 offered an older Slurm release for the chosen setup, while the node uses unified cgroup v2. Slurm `26.05.5` was therefore downloaded from SchedMD, its published SHA-256 was verified, and upstream Debian packages were built and installed. The package build completed with exit code `0`.
-
-That work establishes the learning environment; it is not a recommended beginner installation ritual. Package building, dependency resolution, and service-account repair are summarized here so the rest of the guide can focus on using the scheduler.
+The recorded node used Slurm `26.05.5` with MUNGE, one controller/worker host, unified cgroup v2, and one L4. Its source-package installation and service-account repair were environment-specific setup work, not part of the SA learning path. Git history retains those notes.
 
 ## 1. Read cluster state
 
@@ -42,15 +36,15 @@ That work establishes the learning environment; it is not a recommended beginner
 | Control plane | `slurmctld` on the same node |
 | Compute plane | `slurmd` on the same node |
 | Authentication | MUNGE active |
-| Scheduler version | Slurm `26.05.5`, installed from locally built upstream Debian packages |
+| Scheduler version | Slurm `26.05.5` |
 | CPU topology | 4 logical CPUs: 1 socket, 2 cores, 2 threads per core |
 | Memory | 15,990 MiB detected; 12,288 MiB advertised to Slurm to retain host headroom |
 | GPU | One NVIDIA L4 registered as `gpu:nvidia_l4:1` |
 | Partition | `gpu`, default, one node, two-hour limit |
 | Resource policy | An individual job is capped at three CPUs; cgroup v2 resource constraints enabled |
 | Existing workload | NeMo Speech `26.07.00` image and Guide 02 launcher preserved |
-| Accounting | MariaDB and `slurmdbd` packages installed; Slurm accounting is not configured or validated |
-| Container integration | Docker works from earlier guides; scheduler-aware container execution remains a later exercise |
+| Accounting | Not configured or validated |
+| Container integration | Docker validated in earlier guides; multi-GPU-aware binding remains untested |
 
 `slurmd -C` reported the host topology and found the L4 through NVIDIA autodetection:
 
@@ -94,8 +88,6 @@ echo "job_id=$SLURM_JOB_ID"
 echo "job_name=$SLURM_JOB_NAME"
 echo "hostname=$(hostname)"
 echo "cpus_per_task=$SLURM_CPUS_PER_TASK"
-echo "available_cpus=$(nproc)"
-echo "allowed_cpu_ids=$(awk '/Cpus_allowed_list/ {print $2}' /proc/self/status)"
 echo "started=$(date --iso-8601=seconds)"
 sleep 30
 echo "finished=$(date --iso-8601=seconds)"
@@ -109,7 +101,7 @@ squeue -j <job-id>
 cat cpu-hello-<job-id>.out
 ```
 
-`sbatch` printed the job ID and returned immediately. While the job was active, `squeue` showed it running on the node. The output file reached the final timestamp after 30 seconds and reported two available CPUs. A later `squeue --me` was empty because `squeue` shows active work and the job had completed.
+`sbatch` printed the job ID and returned immediately. While the job was active, `squeue` showed it running on the node. The output file reached the final timestamp after 30 seconds. A later `squeue --me` was empty because `squeue` shows active work and the job had completed.
 
 The CPU job ran in the `gpu` partition without allocating the GPU. A partition selects eligible nodes; a GPU must still be requested explicitly. Persistent completed-job state and exit-code history are not claimed because accounting is not configured and the controller purged the short-lived record.
 
@@ -137,8 +129,6 @@ squeue -j $SLURM_JOB_ID
 ```
 
 `SLURM_JOB_ID` was unset in the original SSH shell and set in the scheduled shell; `squeue` reported the interactive job running. `exit` ended the shell and released its allocation.
-
-One requested CPU exposed two Linux CPU IDs in this environment. Slurm allocates at core granularity here, and each physical core has two hardware threads. That observation is topology and policy dependent, not a universal meaning of `--cpus-per-task=1`.
 
 Use interactive `srun` for short inspection and troubleshooting. Use `sbatch` for repeatable work that should continue without an attached terminal.
 
@@ -271,25 +261,6 @@ Cancellation and deliberate timeout exercises were not executed. They remain use
 
 Persistent accounting is unconfigured, so no completed-job history is claimed from `sacct`. Rootful Docker uses `--gpus all`; a multi-GPU environment should test scheduler-aware device binding and isolation rather than infer them from this single-GPU result.
 
-## Troubleshooting lessons from setup
-
-### Do not diagnose a cluster before it has a configuration
-
-Before the configuration was installed, `scontrol` attempted configless discovery and failed its DNS SRV lookup; `slurmd` also failed to start. Those results described an incomplete setup, not a scheduler defect.
-
-### A service name in configuration must resolve to a real account
-
-The installed packages did not create the expected `slurm` service account in this environment. The first restart therefore failed with `Invalid user for SlurmUser slurm`. Creating a locked, non-login system account, assigning the controller state directory to it, and restarting `slurmctld` and `slurmd` resolved the problem.
-
-The useful diagnostic chain was short:
-
-1. Read the first concrete error.
-2. Correct the missing prerequisite it named.
-3. Restart the two relevant services.
-4. Use one functional check, `sinfo`, to confirm the result.
-
-Repeated status commands would not have added evidence after the node reached `idle`.
-
 ## Command vocabulary
 
 | Command | Plain meaning |
@@ -304,12 +275,8 @@ Repeated status commands would not have added evidence after the node reached `i
 
 ## Boundaries
 
-This is a functional single-node learning environment, not a production cluster design. It does not validate high availability, shared storage, multi-node networking, multi-user isolation, identity integration, fair-share policy, reservations, backfill behavior under sustained load, operational monitoring, or disaster recovery. The controller and worker share one failure domain, and local data and the root filesystem are on the same underlying volume.
+The core guide is complete through scheduled Nemotron inference. This is a functional single-node learning environment, not a production cluster design. It does not validate high availability, shared storage, multi-node networking, multi-user isolation, identity integration, fair-share policy, reservations, backfill behavior under sustained load, operational monitoring, or disaster recovery. The controller and worker share one failure domain, and local data and the root filesystem are on the same underlying volume.
 
 The CPU batch, interactive allocation, GPU allocation, observed two-job contention, and scheduled Nemotron inference are operator-reported. GPU allocation is not GPU utilization, and the contention result covers only the configured single-GPU case. Persistent accounting, cancellation/timeout behavior, scheduler-aware container GPU binding, and production workload behavior remain unvalidated.
 
-The existing Nemotron inference helper and training launcher remain unchanged. The scheduled smoke job reused the existing one-record inference path and did not run a new training experiment.
-
-## Where the evidence stops
-
-The core guide is complete: cluster state, configuration roles, batch and interactive work, explicit GPU allocation, contention, and one scheduled Nemotron inference are documented. Cancellation, timeout, persistent accounting, and multi-GPU-aware container integration remain optional exercises if deeper Slurm operations are the next priority.
+The existing Nemotron inference helper and training launcher remain unchanged. The scheduled smoke job reused the existing one-record inference path and did not run a new training experiment. Cancellation, timeout, persistent accounting, and multi-GPU-aware container integration remain optional exercises if deeper Slurm operations are the next priority.

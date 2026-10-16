@@ -268,9 +268,7 @@ NVIDIA L4
 
 PyTorch's CUDA build version is separate from the host driver's reported compatibility level. In this session the container reported forward-compatibility mode, while the host kernel driver remained unchanged. NVIDIA's [forward-compatibility documentation](https://docs.nvidia.com/deploy/cuda-compatibility/forward-compatibility.html) describes compatible userspace driver components operating with an older kernel driver on supported hardware/driver combinations. Versions need not be identical, but NVIDIA's platform, driver, and feature requirements still apply. The banner and availability results do not prove every workload or feature is supported.
 
-### Two practical validation workflows
-
-**Fast one-liner / copy-paste workflow — host shell:**
+### Minimum framework check
 
 ```bash
 docker run --rm --gpus all \
@@ -278,15 +276,7 @@ docker run --rm --gpus all \
   python -c "import torch; print(torch.__version__); print(torch.cuda.is_available()); print(torch.cuda.get_device_name(0))"
 ```
 
-Use for quick smoke tests, repeatable diagnostics, and remote support. This is a documented equivalent of the interactive checks; a separate execution was not reported. It prints the PyTorch version, availability, and GPU name. Add `print(torch.version.cuda)` when CUDA build details are needed.
-
-**Interactive / no-copy-paste workflow:**
-
-Start the container and Python using the commands above, then type the Python expressions individually. Use for customer consoles, manual troubleshooting, and step-by-step inspection. Run Docker on the host and the `torch` expressions inside the container's Python session. Exit Python with `exit()` and the container shell with `exit`; `--rm` removes the stopped container, while the downloaded image remains cached.
-
-### Small troubleshooting lesson: spelling before infrastructure
-
-`torch.cuda.is_availble()` produced an `AttributeError` because the attribute name was misspelled. The correct `torch.cuda.is_available()` returned `True`. Check the exact API name and error message before treating a user/application mistake as a driver, CUDA, or container failure.
+Use this single check for repeatable diagnostics. It answers whether the selected PyTorch image sees CUDA and the expected GPU. Move to application evidence once it passes; an interactive repetition would not establish anything new.
 
 ### NeMo Speech container checks
 
@@ -317,7 +307,7 @@ docker run --rm --gpus all \
 
 Framework availability and model placement lead to application validation. On October 9, 2026, Guide 02 reported one successful pretrained NSC transcription on the L4. A standalone GPU tensor computation with synchronization and a checked result remains unperformed; the ASR result validates one application execution path.
 
-Continue in [Guide 02 — Adapting NVIDIA Nemotron 3.5 Streaming ASR to Singapore English](02-nemotron-streaming-singapore-english.md). The historical POC prepared 300 train / 50 validation utterances and verified pretrained GPU inference. Reference `uh correct` produced raw prediction `Uh correct. <en-US>` with an explicit prompt-aware non-Lhotse configuration. The fixed 50-record offline baseline completed at 10.84% WER over 793 reference words. The two-step export scored 10.97%, while the later 100-step pilot scored 10.47% and was frozen as POC v1. On 3,670 held-out recordings / 64,490 words, POC v1 reduced WER from 12.5663% to 12.2546%, or 201 fewer errors. A separate [full-data workflow](../../scripts/guide-02/full-finetune/README.md) is prepared for 2,152 train / 1,203 development recordings; its required 32 GiB-or-larger-node resource pilot has not run. The generic one-WAV reference remains an unexecuted alternative.
+Continue in [Guide 02 — Adapting NVIDIA Nemotron 3.5 Streaming ASR to Singapore English](02-nemotron-streaming-singapore-english.md). The historical POC prepared 300 train / 50 validation utterances and verified pretrained GPU inference. The fixed 50-record offline baseline completed at 10.84% WER over 793 reference words. The two-step export scored 10.97%, while the later 100-step pilot scored 10.47% and was frozen as POC v1. On 3,670 held-out recordings / 64,490 words, POC v1 reduced WER from 12.5663% to 12.2546%, or 201 fewer errors. A separate [full-data workflow](../../scripts/guide-02/full-finetune/README.md) is prepared for 2,152 train / 1,203 development recordings; its required 32 GiB-or-larger-node resource pilot has not run.
 
 When a customer's framework workload fails, a minimal CUDA program can isolate the lower CUDA/driver/container stack. A successful compile, kernel launch, synchronization, and result check narrows the investigation; it does not establish that every workload requirement is satisfied. A standalone CUDA compile/kernel test remains unperformed here.
 

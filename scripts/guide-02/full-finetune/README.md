@@ -1,6 +1,6 @@
 # Full-data Nemotron Singlish fine-tuning
 
-This is the production-style follow-on to the historical 300-record / 100-step POC. It keeps NVIDIA NeMo Speech v3.0.0, container `nvcr.io/nvidia/nemo-speech:26.07.00`, the original `.nemo` checkpoint, and NVIDIA's `speech_to_text_finetune.py`. It does not use NeMo AutoModel and does not replace the earlier POC launcher.
+This is the resource-gated follow-on to the historical 300-record / 100-step POC. It keeps NVIDIA NeMo Speech v3.0.0, container `nvcr.io/nvidia/nemo-speech:26.07.00`, the original `.nemo` checkpoint, and NVIDIA's `speech_to_text_finetune.py`. It does not use NeMo AutoModel and does not replace the earlier POC launcher.
 
 The files are implemented but **not yet executed on the required 32 GiB-RAM node**. Do not publish result claims or copy generated artifacts into Git until the pilot, full run, development selection, and reused-test evaluation are complete.
 
